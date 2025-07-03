@@ -1,0 +1,19 @@
+I do not own the code of SM2. I am not a neuroscientist, so I'm just going to use this
+library for spaed repetition instead. It is the one used by Anki, and it seems to be a good algo for this.
+
+Anki doesn't even use SM2 the way that the documentation suggests, so I'll be on my own path
+making this. I don't want to copy Anki.
+Example:
+The SM-2 Algorithm takes 5 values for recall quality:
+    5: perfect response.
+    4: correct response after a hesitation.
+    3: correct response recalled with serious difficulty.
+    2: incorrect response; where the correct one seemed easy to recall.
+    1: incorrect response; the correct one remembered.
+    0: complete blackout.
+However, Anki only takes:
+    Again/Forgot
+    Hard
+    Good
+    Easy
+    as options.
