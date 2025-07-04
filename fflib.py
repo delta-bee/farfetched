@@ -20,11 +20,11 @@ def menu(*args):
     #It will display the user "Eat the Burger" and then "Don't eat the burger"
     #And then this function will return with either "eat" or "nah" depending on what the user selected.
 
-    #This crates a list "argli" that stores all of the arguments given to the function.
+    #This crates a list "argli" that stores all the arguments given to the function.
     argli = list(args)
     #We make sure that we have an even number of arguments, if not, we crash the program.
     if (len(argli)%2) == 1:
-        on_logic_error(1,"Menu: Odd number of arguments were provided.")
+        on_logic_error('1',"Menu: Odd number of arguments were provided.")
 
     #The even arguments are added to displaylist
     displaylist = [argli[i] for i in range(len(argli)) if i%2 == 0]
@@ -69,11 +69,44 @@ def self_check():
         if file not in fileli:
             print(file,"not found. It may be required for proper program operation.")
             files_missing = True
-    for dir in required_directories:
-        if dir not in dirli:
-            print(dir,"directory not found. It may be required for proper program operation.")
+    for directory in required_directories:
+        if directory not in dirli:
+            print(directory, "directory not found. It may be required for proper program operation.")
             dirs_missing = True
     if not files_missing and not dirs_missing:
         print("Self check complete: No problems detected by the scanner.")
     else:
         print("Self check complete: Some issues were detected.")
+class QuestionProcessor:
+    @staticmethod
+    def fetch_question(path):
+        #The purpose of this function is to extract the question and answer from a path.
+        #It may be later updated to work with future question formats, which may have greater functionality.
+        if os.path.isfile(path):
+            lines = [line.strip() for line in open(path)]
+            if 'FF1' in lines[0]:
+                question = lines[1]
+                answer = lines[2]
+                return question, answer
+            else:
+                on_logic_error('1','fetchquestion() is unable to read this file format.')
+                return None
+        else:
+            on_logic_error('1','Invalid path given to fetch_question function.')
+            return None
+    @staticmethod
+    def strip_punctuation(string):
+        discardables = ['\'', '\"', ',', ' ', ':', ';','-']  # update as needed
+        for character in discardables:
+            string = string.replace(character,'')
+        return string
+    @staticmethod
+    def extract_keywords(self,string):
+        word_list = string.split(' ')
+        keywords = []
+        for word in word_list:
+            word = word.lower()
+            word = self.strip_punctuation(word)
+            if word:
+                keywords.append(word)
+        print(keywords)
