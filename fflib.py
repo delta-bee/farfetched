@@ -1,1 +1,55 @@
 #Library for FarFetched
+#Shamelessly reuse code from previous projects, for efficiency
+import sys
+def on_logic_error(severity='1', error_message="No error message was provided"):
+    #For severity, if it's 0, it won't stop the game, if it's 1, it will stop the game.
+    print("Uh oh, an impossible state has occurred.")
+    print(error_message)
+    if severity == int(severity):
+        severity = str(severity)
+    if severity == '0':
+        print("The game has self repaired, and will continue. Yay!")
+        return
+    else:
+        print("The game cannot continue like this, and will now exit.")
+        sys.exit()
+def menu(*args):
+    #Example input: "Eat the Burger","eat","Don't eat the burger","nah"
+    #It will display the user "Eat the Burger" and then "Don't eat the burger"
+    #And then this function will return with either "eat" or "nah" depending on what the user selected.
+
+    #This crates a list "argli" that stores all of the arguments given to the function.
+    argli = list(args)
+    #We make sure that we have an even number of arguments, if not, we crash the program.
+    if (len(argli)%2) == 1:
+        on_logic_error(1,"Menu: Odd number of arguments were provided.")
+
+    #The even arguments are added to displaylist
+    displaylist = [argli[i] for i in range(len(argli)) if i%2 == 0]
+    #And the odd ones are added to varlist
+    varlist = [argli[i] for i in range(len(argli)) if i%2 == 1]
+
+    #This will make something like:
+    '''
+    [1]: Eat the Burger
+    [2]: Don't eat the burger
+    '''
+    for i in range(len(displaylist)):
+        bracket_thing = "[" + str(i+1) + "]:" #Example: [2]:
+        print(bracket_thing,displaylist[i])
+
+
+    # This list is for which numbers we should accept as an input
+    valid_numbers = [str(x + 1) for x in range(len(displaylist))] #Example: [1, 2]
+
+    #This asks the user for their selection, and will loop again if they fuck it up
+    while True:
+        selection = str(input())
+        if selection in valid_numbers:
+            break
+        else:
+            print("Menu: Invalid selection. Try again.")
+
+    #Now we have the player's selection, and we need to fetch from varlist the corresponding thing to return.
+    selection = int(selection)- 1 #Lists start at 0, but the menu we displayed starts at 1, so we need to correct for this.
+    return varlist[selection]
