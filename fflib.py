@@ -1,6 +1,8 @@
 #Library for FarFetched
 #Shamelessly reuse code from previous projects, for efficiency
-import sys
+import sys, os
+required_files = ['main.py','fflib.py','__init__.py','sm_two.py']
+required_directories = ['assets', 'saves']
 def on_logic_error(severity='1', error_message="No error message was provided"):
     #For severity, if it's 0, it won't stop the game, if it's 1, it will stop the game.
     print("Uh oh, an impossible state has occurred.")
@@ -53,3 +55,25 @@ def menu(*args):
     #Now we have the player's selection, and we need to fetch from varlist the corresponding thing to return.
     selection = int(selection)- 1 #Lists start at 0, but the menu we displayed starts at 1, so we need to correct for this.
     return varlist[selection]
+def self_check():
+    #We will deploy os.walk() to crawl the contents of the current directory.
+    fileli = []
+    dirli = []
+    for root, dirs, files in os.walk('.'):
+        fileli += files
+        dirli += dirs
+    #Now, we will check that all needed files and directories were found.
+    files_missing = False
+    dirs_missing = False
+    for file in required_files:
+        if file not in fileli:
+            print(file,"not found. It may be required for proper program operation.")
+            files_missing = True
+    for dir in required_directories:
+        if dir not in dirli:
+            print(dir,"directory not found. It may be required for proper program operation.")
+            dirs_missing = True
+    if not files_missing and not dirs_missing:
+        print("Self check complete: No problems detected by the scanner.")
+    else:
+        print("Self check complete: Some issues were detected.")

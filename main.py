@@ -8,7 +8,7 @@ intro_ascii_art = r"""
  |_|  \__,_|_|  |_|  \___|\__\___|_| |_|\___|\__,_|
 """
 print(intro_ascii_art)
-print("FarFetched, Pre-alpha  Commit #5")
+print("FarFetched, Pre-alpha  Commit #6")
 choice = menu("Perform self-check",'self_check')
 try:
     exec(choice + "()")
