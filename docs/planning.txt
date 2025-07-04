@@ -19,6 +19,7 @@ Bits should be limited to a singular idea that can stand alone by itself
 and be fully understood by the reader. In the event that an idea requires other ideas
 to understand, we will cross this bridge later.
 An example of a "Bit" in the previous example would be:
+
 '''
 The legislative cannot transfer the power of making
 laws to any other hands, for it being but a delegated power from the
