@@ -141,3 +141,25 @@ class QProc:
             return True
         else:
             return False
+def topiclist():
+    topicli = os.listdir('saves')
+    nutopicli = []
+    for x in topicli:
+        nutopicli.append(x)
+        nutopicli.append(x)
+    #menu("topic1","topic1","topic2","topic2")
+    print("flag")
+    param_head = "menu(\""
+    param_body = '\",\"'.join(nutopicli)
+    param_tail = "\")"
+    complete_command = param_head + param_body + param_tail
+    #Everything we've done in those lines above is set up to execute a menu command listing all of the topics.
+    #Now, we'll see which one the users picks.
+    try:
+        choice = eval(complete_command) #Scary!
+    except Exception as e:
+        print(complete_command)
+        print(f"An error occurred: {e}")
+    return choice
+    #This is a terrible way to do it, but at least we can list out the topics now.
+    #Step 2: Have something on the other end of this
