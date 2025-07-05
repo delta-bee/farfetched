@@ -77,7 +77,7 @@ def self_check():
         print("Self check complete: No problems detected by the scanner.")
     else:
         print("Self check complete: Some issues were detected.")
-class QuestionProcessor:
+class QProc:
     @staticmethod
     def fetch_question(path):
         #The purpose of this function is to extract the question and answer from a path.
@@ -101,12 +101,43 @@ class QuestionProcessor:
             string = string.replace(character,'')
         return string
     @staticmethod
-    def extract_keywords(self,string):
+    def extract_keywords(string):
         word_list = string.split(' ')
         keywords = []
         for word in word_list:
             word = word.lower()
-            word = self.strip_punctuation(word)
+            word = QProc.strip_punctuation(word)
             if word:
                 keywords.append(word)
-        print(keywords)
+        return keywords
+    @staticmethod
+    def is_correct(responseli, answerli):
+        if not isinstance(responseli,list) or not isinstance(answerli,list):
+            actual_type = type(responseli)
+            print(actual_type)
+            if 'str' in str(actual_type):
+                print("HEY! is_correct() was given an invalid input.")
+                print("You gave it a string instead of a list.")
+                print("In the interest of not making CrashWare, I'll try to fix it, but YMMV")
+                print("USE THE FUNCTIONS CORRECTLY NEXT TIME!!!")
+                responseli = QProc.extract_keywords(responseli)
+                answerli = QProc.extract_keywords(answerli)
+            else:
+                on_logic_error('1','Incorrect data type given to QProc.iscorrect()')
+
+        correct_keywords = 0
+        incorrect_keywords = 0
+        for keyword in answerli:
+            if keyword in responseli:
+                correct_keywords += 1
+                #print(keyword,"is correct")
+            else:
+                incorrect_keywords +=1
+                #print(keyword,"is incorrect")
+        #The previous portion of code determines how many keywords were correct, and how many were incorrect.
+        #We will now determine whether we will accept this answer.
+        correctness_threshold = 0.6 #We will accept 60% or higher accuracy. Keep in mind that user will be able to override this crude algorithm.
+        if correct_keywords / (correct_keywords+incorrect_keywords) >= correctness_threshold:
+            return True
+        else:
+            return False
