@@ -1,3 +1,4 @@
 import os
 from fflib import *
-print(topiclist())
+j= FFMAN1.scan_for_review()
+print(j[0])

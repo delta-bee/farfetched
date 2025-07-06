@@ -1,6 +1,6 @@
 #Library for FarFetched
 #Shamelessly reuse code from previous projects, for efficiency
-import sys, os
+import sys, os, time
 required_files = ['main.py','fflib.py','__init__.py','sm_two.py']
 required_directories = ['assets', 'saves']
 def on_logic_error(severity='1', error_message="No error message was provided"):
@@ -163,3 +163,24 @@ def topiclist():
     return choice
     #This is a terrible way to do it, but at least we can list out the topics now.
     #Step 2: Have something on the other end of this
+class FFMAN1: #Handles the translation between the "database" and the rest of the program.
+    @staticmethod
+    def log_review_completion(path):
+        print("invoked")
+        #['1','reviewcomplete','boolean','questionpath','timestamp']
+        newline = ['1','reviewcomplete',True,path,int(time.time())]
+        newline = str(newline)
+        with open('assets/data/ffdb','a') as db:
+            db.write(newline + "\n")
+    @staticmethod
+    def scan_for_review():
+        question_paths = []
+        for root, dirs, file in os.walk('saves'):
+            if file:
+                for filename in file:
+                    if 'ffq1' in filename:
+                        question_paths.append(str(root)+'/'+str(filename)) #append relative path
+        return question_paths
+def autolearn():
+    #I'm forcing myself to write this so I can finally connect up the frontend and the backend to do something useful.
+    pass
