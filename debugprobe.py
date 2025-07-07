@@ -1,4 +1,3 @@
 import os
 from fflib import *
-j= FFMAN1.scan_for_review()
-print(j[0])
+v =FFMAN1.check_if_pending_review('saves/topicexample/lessonexample/chunkexample/otherquestiondirectory/q1.ffq1')

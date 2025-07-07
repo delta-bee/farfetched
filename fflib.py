@@ -1,6 +1,8 @@
 #Library for FarFetched
 #Shamelessly reuse code from previous projects, for efficiency
 import sys, os, time
+from xmlrpc.client import Boolean
+
 required_files = ['main.py','fflib.py','__init__.py','sm_two.py']
 required_directories = ['assets', 'saves']
 def on_logic_error(severity='1', error_message="No error message was provided"):
@@ -181,6 +183,31 @@ class FFMAN1: #Handles the translation between the "database" and the rest of th
                     if 'ffq1' in filename:
                         question_paths.append(str(root)+'/'+str(filename)) #append relative path
         return question_paths
+    @staticmethod
+    def check_if_pending_review(qpath): #This checks if a given review card was reviewed recently:
+        dbpath = 'assets/data/ffdb'
+        if os.path.isfile(dbpath):
+            lines = [line.strip() for line in open(dbpath)]
+            for line in lines:
+                if qpath not in line:
+                    continue
+                line = line[1:-1] #Cut off the brackets
+                line = line.replace('"','')
+                line = line.replace('\'','')
+                line = line.replace(' ','')
+                line = line.split(',') #Turn into a list
+                line[2] = Boolean(line[2])
+                line[-1] = int(line[-1])
+                #print(line) #This is ugly. Really really ugly. But I don't have internet right now, so I can't google a more elegant solution.
+                #Note to self; remove jank
+                #In this version, we are not implementing SM2. Instead, we will just use the 1 day timer.
+                #['1', 'reviewcomplete', True, 'assets/data/ffdb', 1751767635]
+                rn = time.time()
+                diff = rn - line[4]
+                if diff >= 86400: #If it's been a while, then say it's pending review. Otherwise, say there's no need.
+                    return True #In v2, we'll use an algo to determine this, instead of this crude method.
+                else:
+                    return False
 def autolearn():
     #I'm forcing myself to write this so I can finally connect up the frontend and the backend to do something useful.
     pass
