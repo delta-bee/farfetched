@@ -12,10 +12,10 @@ def on_logic_error(severity='1', error_message="No error message was provided"):
     if severity == int(severity):
         severity = str(severity)
     if severity == '0':
-        print("The game has self repaired, and will continue. Yay!")
+        print("The program has self repaired, and will continue. Yay!")
         return
     else:
-        print("The game cannot continue like this, and will now exit.")
+        print("The program cannot continue like this, and will now exit.")
         sys.exit()
 def menu(*args):
     #Example input: "Eat the Burger","eat","Don't eat the burger","nah"
@@ -46,7 +46,7 @@ def menu(*args):
     # This list is for which numbers we should accept as an input
     valid_numbers = [str(x + 1) for x in range(len(displaylist))] #Example: [1, 2]
 
-    #This asks the user for their selection, and will loop again if they fuck it up
+    #This asks the user for their selection, and will loop again if they provide an invalid choice
     while True:
         selection = str(input())
         if selection in valid_numbers:
@@ -54,7 +54,7 @@ def menu(*args):
         else:
             print("Menu: Invalid selection. Try again.")
 
-    #Now we have the player's selection, and we need to fetch from varlist the corresponding thing to return.
+    #Now we have the user's selection, and we need to fetch from varlist the corresponding thing to return.
     selection = int(selection)- 1 #Lists start at 0, but the menu we displayed starts at 1, so we need to correct for this.
     return varlist[selection]
 def self_check():
@@ -145,12 +145,11 @@ class QProc:
             return False
 def topiclist():
     topicli = os.listdir('saves')
-    nutopicli = []
+    nutopicli = [] #All of this is just to make the menu command.
     for x in topicli:
         nutopicli.append(x)
         nutopicli.append(x)
     #menu("topic1","topic1","topic2","topic2")
-    print("flag")
     param_head = "menu(\""
     param_body = '\",\"'.join(nutopicli)
     param_tail = "\")"
@@ -162,13 +161,14 @@ def topiclist():
     except Exception as e:
         print(complete_command)
         print(f"An error occurred: {e}")
-    return choice
+    topic_path_head = 'saves/'
+    return topic_path_head +str(choice) #This program speaks in paths. Therefore, we will return the relative path, instead of merely the directory name.
     #This is a terrible way to do it, but at least we can list out the topics now.
     #Step 2: Have something on the other end of this
 class FFMAN1: #Handles the translation between the "database" and the rest of the program.
     @staticmethod
     def log_review_completion(path):
-        print("invoked")
+        #print("invoked")
         #['1','reviewcomplete','boolean','questionpath','timestamp']
         newline = ['1','reviewcomplete',True,path,int(time.time())]
         newline = str(newline)
@@ -181,40 +181,51 @@ class FFMAN1: #Handles the translation between the "database" and the rest of th
             if file:
                 for filename in file:
                     if 'ffq1' in filename:
-                        question_paths.append(str(root)+'/'+str(filename)) #append relative path
+                        question_path = (str(root)+'/'+str(filename)) #add relative path
+                        #print(question_path,"is being scanned for database entries")
+                        if FFMAN1.check_if_pending_review(question_path):
+                            question_paths.append(question_path)
         return question_paths
     @staticmethod
     def check_if_pending_review(qpath): #This checks if a given review card was reviewed recently:
         if 'list' in str(type(qpath)):
             on_logic_error('1','Incorrect usage of check pending review function')
         dbpath = 'assets/data/ffdb'
-        if os.path.isfile(dbpath):
-            lines = [line.strip() for line in open(dbpath)]
+        if os.path.isfile(dbpath): #Check if database exists
+            lines = [line.strip() for line in open(dbpath)] #We will now read every line from the database
             for line in lines:
-                if qpath not in line:
-                    continue
-                line = line[1:-1] #Cut off the brackets
-                line = line.replace('"','')
-                line = line.replace('\'','')
-                line = line.replace(' ','')
-                line = line.split(',') #Turn into a list
-                line[2] = Boolean(line[2])
-                line[-1] = int(line[-1])
-                #print(line) #This is ugly. Really really ugly. But I don't have internet right now, so I can't google a more elegant solution.
-                #Note to self; remove jank
-                #In this version, we are not implementing SM2. Instead, we will just use the 1 day timer.
-                #['1', 'reviewcomplete', True, 'assets/data/ffdb', 1751767635]
-                rn = time.time()
-                diff = rn - line[4]
-                if diff >= 86400: #If it's been a while, then say it's pending review. Otherwise, say there's no need.
-                    return True #In v2, we'll use an algo to determine this, instead of this crude method.
-                else:
-                    return False
-def fetchallpending():
-    #I'm forcing myself to write this so I can finally connect up the frontend and the backend to do something useful.
-    reviewableli = []
-    allquestions =FFMAN1.scan_for_review()
-    for questionfile in allquestions:
-        if FFMAN1.check_if_pending_review(questionfile):
-            reviewableli.append(questionfile)
-    return reviewableli
+                if qpath in line: #Ignore all database entries that to not concern the file we are checking.
+                    line = line[1:-1] #Cut off the brackets
+                    line = line.replace('"','')
+                    line = line.replace('\'','')
+                    line = line.replace(' ','')
+                    line = line.split(',') #Turn into a list
+                    line[2] = Boolean(line[2])
+                    line[-1] = int(line[-1])
+                    #print(line) #This is ugly. Really really ugly. But I don't have internet right now, so I can't google a more elegant solution.
+                    #Note to self; remove jank
+                    #In this version, we are not implementing SM2. Instead, we will just use the 1 day timer.
+                    #['1', 'reviewcomplete', True, 'assets/data/ffdb', 1751767635]
+                    rn = time.time()
+                    diff = rn - line[4]
+                    if diff >= 86400: #If it's been a while, then say it's pending review. Otherwise, say there's no need.
+                        return True #In v2, we'll use an algo to determine this, instead of this crude method.
+                    else:
+                        return False
+            return True #If there are no database entries at all, then we will say it needs review.
+    @staticmethod
+    def fetchallpending():
+        #I'm forcing myself to write this so I can finally connect up the frontend and the backend to do something useful.
+        reviewableli = []
+        allquestions =FFMAN1.scan_for_review()
+        for questionfile in allquestions:
+            #print(questionfile,"is being checked")
+            if FFMAN1.check_if_pending_review(questionfile):
+                reviewableli.append(questionfile)
+                #print(questionfile,'has been accepted')
+        return reviewableli
+def autolearn(topic='all'):
+    if topic != 'all':
+        return (FFMAN1.scan_for_review(topic))
+    elif topic == 'all':
+        return (FFMAN1.fetchallpending())
