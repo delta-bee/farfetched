@@ -8,8 +8,8 @@ intro_ascii_art = r"""
  |_|  \__,_|_|  |_|  \___|\__\___|_| |_|\___|\__,_|
 """
 print(intro_ascii_art)
-print("FarFetched, Pre-alpha  Commit #11")
-choice = menu("Auto-Learn","autolearn","View Topics","topiclist","Perform self-check",'self_check')
+print("FarFetched, Pre-alpha  Commit #12")
+choice = menu("Auto-Learn","fetchallpending","View Topics","topiclist","Perform self-check",'self_check')
 try:
     exec(choice + "()")
 except NameError:

@@ -175,9 +175,9 @@ class FFMAN1: #Handles the translation between the "database" and the rest of th
         with open('assets/data/ffdb','a') as db:
             db.write(newline + "\n")
     @staticmethod
-    def scan_for_review():
+    def scan_for_review(root='saves'):
         question_paths = []
-        for root, dirs, file in os.walk('saves'):
+        for root, dirs, file in os.walk(root):
             if file:
                 for filename in file:
                     if 'ffq1' in filename:
@@ -185,6 +185,8 @@ class FFMAN1: #Handles the translation between the "database" and the rest of th
         return question_paths
     @staticmethod
     def check_if_pending_review(qpath): #This checks if a given review card was reviewed recently:
+        if 'list' in str(type(qpath)):
+            on_logic_error('1','Incorrect usage of check pending review function')
         dbpath = 'assets/data/ffdb'
         if os.path.isfile(dbpath):
             lines = [line.strip() for line in open(dbpath)]
@@ -208,6 +210,11 @@ class FFMAN1: #Handles the translation between the "database" and the rest of th
                     return True #In v2, we'll use an algo to determine this, instead of this crude method.
                 else:
                     return False
-def autolearn():
+def fetchallpending():
     #I'm forcing myself to write this so I can finally connect up the frontend and the backend to do something useful.
-    pass
+    reviewableli = []
+    allquestions =FFMAN1.scan_for_review()
+    for questionfile in allquestions:
+        if FFMAN1.check_if_pending_review(questionfile):
+            reviewableli.append(questionfile)
+    return reviewableli
