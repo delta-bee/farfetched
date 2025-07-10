@@ -1,7 +1,6 @@
 #Library for FarFetched
 #Shamelessly reuse code from previous projects, for efficiency
 import sys, os, time
-from xmlrpc.client import Boolean
 
 required_files = ['main.py','fflib.py','__init__.py','sm_two.py']
 required_directories = ['assets', 'saves']
@@ -17,6 +16,18 @@ def on_logic_error(severity='1', error_message="No error message was provided"):
     else:
         print("The program cannot continue like this, and will now exit.")
         sys.exit()
+
+def make_boolean(string):  # Converts string literals to booleans
+    if 'bool' in str(type(string)):
+        return string #Return to sender
+    string = string.lower()
+    if string == 'true':
+        return True
+    elif string == 'false':
+        return False
+    else:
+        on_logic_error('1','make_boolean was given an invalid input.')
+        return None #Stupid Pycharm, nagging me.
 def menu(*args):
     #Example input: "Eat the Burger","eat","Don't eat the burger","nah"
     #It will display the user "Eat the Burger" and then "Don't eat the burger"
@@ -116,12 +127,7 @@ class QProc:
     def is_correct(responseli, answerli):
         if not isinstance(responseli,list) or not isinstance(answerli,list):
             actual_type = type(responseli)
-            print(actual_type)
             if 'str' in str(actual_type):
-                print("HEY! is_correct() was given an invalid input.")
-                print("You gave it a string instead of a list.")
-                print("In the interest of not making CrashWare, I'll try to fix it, but YMMV")
-                print("USE THE FUNCTIONS CORRECTLY NEXT TIME!!!")
                 responseli = QProc.extract_keywords(responseli)
                 answerli = QProc.extract_keywords(answerli)
             else:
@@ -167,10 +173,14 @@ def topiclist():
     #Step 2: Have something on the other end of this
 class FFMAN1: #Handles the translation between the "database" and the rest of the program.
     @staticmethod
-    def log_review_completion(path):
-        #print("invoked")
+    def log_review_completion(path,correctness):
+        #Check for valid type
+        if correctness not in (True, False, "True","False"):
+            on_logic_error('1',"Invalid correctness state given to log_review_completion()")
+        correctness = make_boolean(correctness) #In case of string. Fun fact: This used to be eval. You could just edit the database, and you could just insert code there to hijack this program and run god-knows-what. Jeez.
+        #Of course, this program should NEVER be run with admin or root or anything, and if you have write perms, it's not much of an attack to run code as user.
         #['1','reviewcomplete','boolean','questionpath','timestamp']
-        newline = ['1','reviewcomplete',True,path,int(time.time())]
+        newline = ['1','reviewcomplete',correctness,path,int(time.time())]
         newline = str(newline)
         with open('assets/data/ffdb','a') as db:
             db.write(newline + "\n")
@@ -191,31 +201,33 @@ class FFMAN1: #Handles the translation between the "database" and the rest of th
         if 'list' in str(type(qpath)):
             on_logic_error('1','Incorrect usage of check pending review function')
         dbpath = 'assets/data/ffdb'
-        if os.path.isfile(dbpath): #Check if database exists
-            lines = [line.strip() for line in open(dbpath)] #We will now read every line from the database
-            for line in lines:
-                if qpath in line: #Ignore all database entries that to not concern the file we are checking.
-                    line = line[1:-1] #Cut off the brackets
-                    line = line.replace('"','')
-                    line = line.replace('\'','')
-                    line = line.replace(' ','')
-                    line = line.split(',') #Turn into a list
-                    line[2] = Boolean(line[2])
-                    line[-1] = int(line[-1])
-                    #print(line) #This is ugly. Really really ugly. But I don't have internet right now, so I can't google a more elegant solution.
-                    #Note to self; remove jank
-                    #In this version, we are not implementing SM2. Instead, we will just use the 1 day timer.
-                    #['1', 'reviewcomplete', True, 'assets/data/ffdb', 1751767635]
-                    rn = time.time()
-                    diff = rn - line[4]
-                    if diff >= 86400: #If it's been a while, then say it's pending review. Otherwise, say there's no need.
-                        return True #In v2, we'll use an algo to determine this, instead of this crude method.
-                    else:
-                        return False
-            return True #If there are no database entries at all, then we will say it needs review.
+        is_pending = True #This is the default value, but will change if a record says that it's not actually pending.
+        if not os.path.isfile(dbpath): #Check if database exists
+            on_logic_error('1','Database file not found.')
+        lines = [line.strip() for line in open(dbpath)] #We will now read every line from the database
+        for line in lines:
+            if qpath in line: #Ignore all database entries that to not concern the file we are checking.
+                line = line[1:-1] #Cut off the brackets
+                line = line.replace('"','')
+                line = line.replace('\'','')
+                line = line.replace(' ','')
+                line = line.split(',') #Turn into a list
+                line[2] = make_boolean(line[2])
+                line[-1] = int(line[-1])
+                #print(line) #This is ugly. Really really ugly. But I don't have internet right now, so I can't google a more elegant solution.
+                #Note to self; remove jank
+                #In this version, we are not implementing SM2. Instead, we will just use the 1 day timer.
+                #['1', 'reviewcomplete', True, 'assets/data/ffdb', 1751767635]
+                rn = time.time()
+                diff = rn - line[4]
+                is_correct = line[2]
+                if is_correct: #i.e, false was reported
+                    if diff <= 86400: #If it's been a while, then say it's pending review. Otherwise, say there's no need.
+                        #In v2, we'll use an algo to determine this, instead of this crude method.
+                        is_pending = False
+        return is_pending
     @staticmethod
     def fetchallpending():
-        #I'm forcing myself to write this so I can finally connect up the frontend and the backend to do something useful.
         reviewableli = []
         allquestions =FFMAN1.scan_for_review()
         for questionfile in allquestions:
@@ -226,6 +238,36 @@ class FFMAN1: #Handles the translation between the "database" and the rest of th
         return reviewableli
 def autolearn(topic='all'):
     if topic != 'all':
-        return (FFMAN1.scan_for_review(topic))
+        return FFMAN1.scan_for_review(topic)
     elif topic == 'all':
-        return (FFMAN1.fetchallpending())
+        return FFMAN1.fetchallpending()
+    else: return
+class Menu:
+    @staticmethod
+    def main_menu():
+        choice = menu("Auto-Learn", "autolearn", "Perform self-check", 'self_check')
+        if choice == 'autolearn':
+            questions_to_ask = autolearn('all')
+            for question in questions_to_ask:
+                Menu.ask_question(question)
+            print("Finished asking questions.")
+        return 'Menu.main_menu()'
+    @staticmethod
+    def ask_question(path):
+        question,answer = QProc.fetch_question(path)
+        print(question)
+        print("Please type your response:")
+        response = input()
+        correctness = QProc.is_correct(response,answer)
+        if correctness: #i.e. True
+            print("Correct! Moving to the next question...")
+            FFMAN1.log_review_completion(path, True)
+        else:
+            print("The Algorithm™ believes your response was incorrect. Override?")
+            override = menu("Override","override","Do not override","nope")
+            if override == "override":
+                print("Algorithm ignored. Human is supreme. Truth bends to your will.") #What the heck did I just write?
+                FFMAN1.log_review_completion(path, True)
+            elif override == 'nope':
+                FFMAN1.log_review_completion(path,False)
+        return
