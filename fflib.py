@@ -251,6 +251,8 @@ class Menu:
             for question in questions_to_ask:
                 Menu.ask_question(question)
             print("Finished asking questions.")
+        elif choice == 'self_check':
+            self_check()
         return 'Menu.main_menu()'
     @staticmethod
     def ask_question(path):
