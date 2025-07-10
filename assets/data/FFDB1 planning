@@ -1,0 +1,4 @@
+The database should be composed of entries in list format
+['entryversion','entrytype','data1','data2','data3']
+FFDB1 Protocol:
+['1','reviewcomplete','boolean','questionpath','timestamp'] #Example of the first type of declaration, the review complete announcement
