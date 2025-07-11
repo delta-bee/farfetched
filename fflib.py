@@ -2,7 +2,7 @@
 #Shamelessly reuse code from previous projects, for efficiency
 import sys, os, time
 
-required_files = ['main.py','fflib.py','__init__.py','sm_two.py']
+required_files = ['main.py','fflib.py','__init__.py','sm2.py']
 required_directories = ['assets', 'saves']
 def on_logic_error(severity='1', error_message="No error message was provided"):
     #For severity, if it's 0, it won't stop the game, if it's 1, it will stop the game.

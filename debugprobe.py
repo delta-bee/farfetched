@@ -1,4 +1,3 @@
 import os
 from fflib import *
-v =autolearn(topiclist())
-print(v)
+from sm2 import *

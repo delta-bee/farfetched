@@ -8,6 +8,6 @@ intro_ascii_art = r"""
  |_|  \__,_|_|  |_|  \___|\__\___|_| |_|\___|\__,_|
 """
 print(intro_ascii_art)
-print("FarFetched, Pre-alpha  Commit #15")
+print("FarFetched, Pre-alpha  Commit #16")
 while True:
     eval(Menu.main_menu())
