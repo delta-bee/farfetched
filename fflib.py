@@ -1,6 +1,6 @@
 #Library for FarFetched
 #Shamelessly reuse code from previous projects, for efficiency
-import sys, os, time, sqlite3
+import sys, os, time, sqlite3, sm2
 from typing import List, Union, Tuple #I was told my stuff's more readable if I use this.
 from datetime import datetime
 required_files = ['main.py','fflib.py','__init__.py','sm2.py']
@@ -191,15 +191,24 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
     def determine_repetitions(path: str):
         #This function should really only be used with fetch_in_database, unless you're insane.
         #Ex input: (5.0, 5, 'today', 'saves/topicexample/lessonexample/chunkexample/contentexample')
+        dbcontents: List[Tuple[int]] = []
         if not os.path.exists('data.db'):
             FFMAN2.create_database() #If database does not exist, call upon the create database function.
         with sqlite3.connect('data.db') as conn:
             cur = conn.cursor()
-            cur.execute('''SELECT * FROM logs WHERE path = ?''',(path,))
-            matches = 0
-            for x in cur: #Increment by 1 for every entry that has the path in it.
-                matches += 1
-        return matches
+            cur.execute('''SELECT id,quality FROM logs WHERE path = ?''',(path,))
+            for entry in cur:
+                dbcontents.append(entry)
+        repetitions = 0
+        #Right now, DB Contents is a list of tuples with just one integer in them.
+        for quality_tuple in dbcontents: #Increment by 1 for every entry that has the path in it.
+            #print(quality_tuple[0])This seems like it's going in order. If it's not, we'll figure out soon enough.
+            review_quality = quality_tuple[1]
+            if review_quality > 2:
+                repetitions += 1
+            else:
+                repetitions = 0 #If the review quality is 2 or lower, then it doesn't count, because the response was incorrect.
+        return repetitions
     @staticmethod
     def determine_interval(review_datetime: str) -> int:
         #Ex input: 2025-07-14 22:33:09.344286
@@ -209,7 +218,8 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
         return int((current_timestamp-past_timestamp)//86400)
     @staticmethod
     def fetch_in_database(path: str) -> List[List[Union[int,float,int,int,str]]]:
-        #Output: quality (int), easiness (float), interval (int), repetitions(int), review_datetime=None(str)
+        #Input: path of file
+        #Output: quality (int), easiness (float), interval (int), repetitions(int), review_datetime(str)
         output_entries: List[List[Union[int,float,int,int,str]]] = []
         dbcontents: List[Tuple[Union[int,float,str,str]]] = []
         if not os.path.exists('data.db'):
@@ -235,13 +245,23 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
         return output_entries
 
     @staticmethod
-    def log_review_completion(path,correctness,easiness):
+    def log_review_completion(path: str,correctness: int,easiness:str =None)-> None:
         if not os.path.exists('data.db'):
             FFMAN2.create_database()
-        with sqlite3.connect() as conn:
+        if not FFMAN2.fetch_in_database(path):
+            #If there are no database entries, we use first review instead.
+            sm2dict = sm2.first_review(correctness)
+            easiness, interval, repetitions, review_datetime = sm2dict['easiness'], sm2dict['interval'], sm2dict['repetitions'], sm2dict['review_datetime']
+            #FORMAT: id(int), entry_type(str), quality(int), easiness(float), review_datetime(str), path(str)
+            with sqlite3.connect('data.db') as conn:
+                cur = conn.cursor()
+                cur.execute('''INSERT INTO logs (entry_type,quality,easiness,review_datetime,path) VALUES ('review_log',?,?,?,?)''',(correctness,easiness,review_datetime,path))
+                conn.commit()
+            return
+        timestamp = datetime.utcnow()
+        with sqlite3.connect('data.db') as conn:
             cur = conn.cursor()
 
-    pass
     @staticmethod
     def scan_for_review(root='saves'):
         question_paths = []
