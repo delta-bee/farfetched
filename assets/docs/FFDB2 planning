@@ -1,0 +1,4 @@
+Log Database (FFDB2) has:
+id,entry_type (str),quality,easiness,review_datetime,path in that order
+Downstream, the project needs to know quality, easiness, interval, repetitions, review_datetime=None
+However, we can use current datetime, calculate intervals and repetitions ourselves, so we only need to get quality, easiness from the database, with the datetime of the review log to calculate a correct interval.

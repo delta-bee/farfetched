@@ -1,10 +1,11 @@
 #Library for FarFetched
 #Shamelessly reuse code from previous projects, for efficiency
-import sys, os, time
-
+import sys, os, time, sqlite3
+from typing import List, Union, Tuple #I was told my stuff's more readable if I use this.
+from datetime import datetime
 required_files = ['main.py','fflib.py','__init__.py','sm2.py']
 required_directories = ['assets', 'saves']
-def on_logic_error(severity='1', error_message="No error message was provided"):
+def on_error(severity='1', error_message="No error message was provided"):
     #For severity, if it's 0, it won't stop the game, if it's 1, it will stop the game.
     print("Uh oh, an impossible state has occurred.")
     print(error_message)
@@ -26,7 +27,7 @@ def make_boolean(string):  # Converts string literals to booleans
     elif string == 'false':
         return False
     else:
-        on_logic_error('1','make_boolean was given an invalid input.')
+        on_error('1', 'make_boolean was given an invalid input.')
         return None #Stupid Pycharm, nagging me.
 def menu(*args):
     #Example input: "Eat the Burger","eat","Don't eat the burger","nah"
@@ -37,7 +38,7 @@ def menu(*args):
     argli = list(args)
     #We make sure that we have an even number of arguments, if not, we crash the program.
     if (len(argli)%2) == 1:
-        on_logic_error('1',"Menu: Odd number of arguments were provided.")
+        on_error('1', "Menu: Odd number of arguments were provided.")
 
     #The even arguments are added to displaylist
     displaylist = [argli[i] for i in range(len(argli)) if i%2 == 0]
@@ -102,10 +103,10 @@ class QProc:
                 answer = lines[2]
                 return question, answer
             else:
-                on_logic_error('1','fetchquestion() is unable to read this file format.')
+                on_error('1', 'fetchquestion() is unable to read this file format.')
                 return None
         else:
-            on_logic_error('1','Invalid path given to fetch_question function.')
+            on_error('1', 'Invalid path given to fetch_question function.')
             return None
     @staticmethod
     def strip_punctuation(string):
@@ -131,7 +132,7 @@ class QProc:
                 responseli = QProc.extract_keywords(responseli)
                 answerli = QProc.extract_keywords(answerli)
             else:
-                on_logic_error('1','Incorrect data type given to QProc.iscorrect()')
+                on_error('1', 'Incorrect data type given to QProc.iscorrect()')
 
         correct_keywords = 0
         incorrect_keywords = 0
@@ -171,19 +172,76 @@ def topiclist():
     return topic_path_head +str(choice) #This program speaks in paths. Therefore, we will return the relative path, instead of merely the directory name.
     #This is a terrible way to do it, but at least we can list out the topics now.
     #Step 2: Have something on the other end of this
-class FFMAN1: #Handles the translation between the "database" and the rest of the program.
+class FFMAN2: #Handles the translation between the "database" and the rest of the program.
     @staticmethod
-    def log_review_completion(path,correctness):
-        #Check for valid type
-        if correctness not in (True, False, "True","False"):
-            on_logic_error('1',"Invalid correctness state given to log_review_completion()")
-        correctness = make_boolean(correctness) #In case of string. Fun fact: This used to be eval. You could just edit the database, and you could just insert code there to hijack this program and run god-knows-what. Jeez.
-        #Of course, this program should NEVER be run with admin or root or anything, and if you have write perms, it's not much of an attack to run code as user.
-        #['1','reviewcomplete','boolean','questionpath','timestamp']
-        newline = ['1','reviewcomplete',correctness,path,int(time.time())]
-        newline = str(newline)
-        with open('assets/data/ffdb','a') as db:
-            db.write(newline + "\n")
+    def create_database() -> None:
+        with sqlite3.connect('data.db') as connection:
+            cursor = connection.cursor()
+            command = '''CREATE TABLE IF NOT EXISTS logs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    entry_type TEXT,
+                    quality INTEGER,
+                    easiness REAL,
+                    review_datetime TEXT,
+                    path TEXT
+                )''' #We are not including repetitions because I'd rather calculate that myself, and Interval could get messed up if the user reviews the card beyond the program's desired review date.
+            cursor.execute(command)
+            connection.commit()
+    @staticmethod
+    def determine_repetitions(path: str):
+        #This function should really only be used with fetch_in_database, unless you're insane.
+        #Ex input: (5.0, 5, 'today', 'saves/topicexample/lessonexample/chunkexample/contentexample')
+        if not os.path.exists('data.db'):
+            FFMAN2.create_database() #If database does not exist, call upon the create database function.
+        with sqlite3.connect('data.db') as conn:
+            cur = conn.cursor()
+            cur.execute('''SELECT * FROM logs WHERE path = ?''',(path,))
+            matches = 0
+            for x in cur: #Increment by 1 for every entry that has the path in it.
+                matches += 1
+        return matches
+    @staticmethod
+    def determine_interval(review_datetime: str) -> int:
+        #Ex input: 2025-07-14 22:33:09.344286
+        dt = datetime.strptime(review_datetime, "%Y-%m-%d %H:%M:%S.%f")
+        past_timestamp = dt.timestamp()
+        current_timestamp = time.time()
+        return int((current_timestamp-past_timestamp)//86400)
+    @staticmethod
+    def fetch_in_database(path: str) -> List[List[Union[int,float,int,int,str]]]:
+        #Output: quality (int), easiness (float), interval (int), repetitions(int), review_datetime=None(str)
+        output_entries: List[List[Union[int,float,int,int,str]]] = []
+        dbcontents: List[Tuple[Union[int,float,str,str]]] = []
+        if not os.path.exists('data.db'):
+            FFMAN2.create_database() #If database does not exist, call upon the create database function.
+        with sqlite3.connect('data.db') as conn:
+            cur = conn.cursor()
+            cur.execute('SELECT quality, easiness, review_datetime, path FROM logs WHERE entry_type = "review_log" AND path = ?',(path,))
+            for data in cur:
+                dbcontents.append(data) #We need to close the connection ASAP, so we'll just put all of the data in this list.
+        for output_entry in dbcontents:
+            if output_entry:
+                try:
+                    #(5.0 (easiness), 5, '2025-03-02 09:12:30.654321', 'saves/topicexample/lessonexample/chunkexample/questions/q1.ffq1')
+                    #We are repacking the contents of cur (database cursor) into a list, so that we may return the contents.
+                    quality = int(output_entry[0])
+                    easiness = float(output_entry[1])
+                    review_datetime = str(output_entry[2])
+                    interval = FFMAN2.determine_interval(review_datetime)
+                    repetitions = FFMAN2.determine_repetitions(path)
+                    output_entries.append([quality,easiness,interval,repetitions,review_datetime])
+                except (ValueError or IndexError) as e:
+                    on_error('1', f'Data type error happened when Fetch in Database tried to repack a database entry. Check Database integrity.{str(e)}')
+        return output_entries
+
+    @staticmethod
+    def log_review_completion(path,correctness,easiness):
+        if not os.path.exists('data.db'):
+            FFMAN2.create_database()
+        with sqlite3.connect() as conn:
+            cur = conn.cursor()
+
+    pass
     @staticmethod
     def scan_for_review(root='saves'):
         question_paths = []
@@ -193,17 +251,17 @@ class FFMAN1: #Handles the translation between the "database" and the rest of th
                     if 'ffq1' in filename:
                         question_path = (str(root)+'/'+str(filename)) #add relative path
                         #print(question_path,"is being scanned for database entries")
-                        if FFMAN1.check_if_pending_review(question_path):
+                        if FFMAN2.check_if_pending_review(question_path):
                             question_paths.append(question_path)
         return question_paths
     @staticmethod
     def check_if_pending_review(qpath): #This checks if a given review card was reviewed recently:
         if 'list' in str(type(qpath)):
-            on_logic_error('1','Incorrect usage of check pending review function')
+            on_error('1', 'Incorrect usage of check pending review function')
         dbpath = 'assets/data/ffdb'
         is_pending = True #This is the default value, but will change if a record says that it's not actually pending.
         if not os.path.isfile(dbpath): #Check if database exists
-            on_logic_error('1','Database file not found.')
+            on_error('1', 'Database file not found.')
         lines = [line.strip() for line in open(dbpath)] #We will now read every line from the database
         for line in lines:
             if qpath in line: #Ignore all database entries that to not concern the file we are checking.
@@ -229,18 +287,21 @@ class FFMAN1: #Handles the translation between the "database" and the rest of th
     @staticmethod
     def fetchallpending():
         reviewableli = []
-        allquestions =FFMAN1.scan_for_review()
+        allquestions =FFMAN2.scan_for_review()
         for questionfile in allquestions:
             #print(questionfile,"is being checked")
-            if FFMAN1.check_if_pending_review(questionfile):
+            if FFMAN2.check_if_pending_review(questionfile):
                 reviewableli.append(questionfile)
                 #print(questionfile,'has been accepted')
         return reviewableli
+    @staticmethod
+    def fetch_next_review():
+        pass
 def autolearn(topic='all'):
     if topic != 'all':
-        return FFMAN1.scan_for_review(topic)
+        return FFMAN2.scan_for_review(topic)
     elif topic == 'all':
-        return FFMAN1.fetchallpending()
+        return FFMAN2.fetchallpending()
     else: return
 class Menu:
     @staticmethod
@@ -263,13 +324,13 @@ class Menu:
         correctness = QProc.is_correct(response,answer)
         if correctness: #i.e. True
             print("Correct! Moving to the next question...")
-            FFMAN1.log_review_completion(path, True)
+            FFMAN2.log_review_completion(path, True)
         else:
             print("The Algorithm™ believes your response was incorrect. Override?")
             override = menu("Override","override","Do not override","nope")
             if override == "override":
                 print("Algorithm ignored. Human is supreme. Truth bends to your will.") #What the heck did I just write?
-                FFMAN1.log_review_completion(path, True)
+                FFMAN2.log_review_completion(path, True)
             elif override == 'nope':
-                FFMAN1.log_review_completion(path,False)
+                FFMAN2.log_review_completion(path, False)
         return
