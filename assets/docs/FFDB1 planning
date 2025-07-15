@@ -1,0 +1,10 @@
+The database should be composed of entries in list format
+['entryversion','entrytype','data1','data2','data3']
+FFDB1 Protocol:
+['1','reviewcomplete','boolean','questionpath','timestamp'] #Example of the first type of declaration, the review complete announcement
+['2','reviewcomplete','accuracy (int)','questionpath','timestamp'] #V2 review complete declaration, modified
+
+Upgrading FarFetched to utilize the SM2 algorithm is going to be hectic, and will require major changes to nearly ALL of my code.
+As a result, we are now switching to JSON entries for the database, and since nobody actually uses FarFetched 0.1.0, I'm not going to add
+support for FFDB1.
+FFDB1 is no longer supported. We are using FFDB2 now, which is an actual database.

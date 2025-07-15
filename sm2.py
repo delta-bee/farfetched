@@ -6,10 +6,11 @@ from typing import Optional, Union, Dict
 def review(
     quality: int,
     easiness: float,
-    interval: int,
+    #interval: int, ---Dear person who made the SM2 algorithm package. Why on earth do you require this as a parameter if you're going to do nothing with it?
     repetitions: int,
     review_datetime: Optional[Union[datetime, str]] = None,
 ) -> Dict:
+    interval: int = 0 #Declaring it instead. THIS DIDN'T NEED TO BE A PARAMETER!
     if not review_datetime:
         review_datetime = datetime.utcnow().isoformat(sep=" ", timespec="seconds")
 
@@ -33,13 +34,13 @@ def review(
     if easiness < 1.3:
         easiness = 1.3
 
-    review_datetime += timedelta(days=interval)
+    review_datetime = review_datetime + timedelta(days=interval)
 
     return {
         "easiness": easiness,
         "interval": interval,
         "repetitions": repetitions,
-        "review_datetime": str(review_datetime),
+        "review_datetime": review_datetime.strftime('%Y-%m-%d %H:%M:%S.%f') #For consistency with First_review()'s output.
     }
 
 
@@ -50,4 +51,4 @@ def first_review(
     if not review_datetime:
         review_datetime = datetime.utcnow()
 
-    return review(quality, 2.5, 0, 0, review_datetime)
+    return review(quality, 2.5, 0, review_datetime)
