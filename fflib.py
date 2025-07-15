@@ -3,8 +3,11 @@
 import sys, os, time, sqlite3, sm2
 from typing import List, Union, Tuple #I was told my stuff's more readable if I use this.
 from datetime import datetime
-required_files = ['main.py','fflib.py','__init__.py','sm2.py']
-required_directories = ['assets', 'saves']
+
+from scipy.signal import correlate
+
+required_files = ['main.py','fflib.py','data.db','sm2.py']
+required_directories = ['saves']
 def on_error(severity='1', error_message="No error message was provided"):
     #For severity, if it's 0, it won't stop the game, if it's 1, it will stop the game.
     print("Uh oh, an impossible state has occurred.")
@@ -82,6 +85,9 @@ def self_check():
     for file in required_files:
         if file not in fileli:
             print(file,"not found. It may be required for proper program operation.")
+            if file == 'data.db':
+                print("Automatically created new database!")
+                FFMAN2.create_database()
             files_missing = True
     for directory in required_directories:
         if directory not in dirli:
@@ -125,7 +131,7 @@ class QProc:
                 keywords.append(word)
         return keywords
     @staticmethod
-    def is_correct(responseli, answerli):
+    def is_perfect(responseli: list or str, answerli: list or str) -> bool:
         if not isinstance(responseli,list) or not isinstance(answerli,list):
             actual_type = type(responseli)
             if 'str' in str(actual_type):
@@ -144,8 +150,8 @@ class QProc:
                 incorrect_keywords +=1
                 #print(keyword,"is incorrect")
         #The previous portion of code determines how many keywords were correct, and how many were incorrect.
-        #We will now determine whether we will accept this answer.
-        correctness_threshold = 0.6 #We will accept 60% or higher accuracy. Keep in mind that user will be able to override this crude algorithm.
+        #We will now determine whether we will accept this answer as perfect.
+        correctness_threshold = 0.8 #We will accept 60% or higher accuracy. Keep in mind that user will be able to override this crude algorithm.
         if correct_keywords / (correct_keywords+incorrect_keywords) >= correctness_threshold:
             return True
         else:
@@ -217,6 +223,10 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
         current_timestamp = time.time()
         return int((current_timestamp-past_timestamp)//86400)
     @staticmethod
+    def determine_easiness(path: str) -> float:
+        data = FFMAN2.fetch_in_database(path)
+        return data[-1][1]
+    @staticmethod
     def fetch_in_database(path: str) -> List[List[Union[int,float,int,int,str]]]:
         #Input: path of file
         #Output: quality (int), easiness (float), interval (int), repetitions(int), review_datetime(str)
@@ -226,7 +236,7 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
             FFMAN2.create_database() #If database does not exist, call upon the create database function.
         with sqlite3.connect('data.db') as conn:
             cur = conn.cursor()
-            cur.execute('SELECT quality, easiness, review_datetime, path FROM logs WHERE entry_type = "review_log" AND path = ?',(path,))
+            cur.execute('SELECT quality, easiness, review_datetime, path FROM logs WHERE entry_type = "review_log" AND path = ? ORDER BY id ASC',(path,))
             for data in cur:
                 dbcontents.append(data) #We need to close the connection ASAP, so we'll just put all of the data in this list.
         for output_entry in dbcontents:
@@ -245,22 +255,28 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
         return output_entries
 
     @staticmethod
-    def log_review_completion(path: str,correctness: int,easiness:str =None)-> None:
+    def log_review_completion(path: str,correctness: int)-> None:
         if not os.path.exists('data.db'):
             FFMAN2.create_database()
-        if not FFMAN2.fetch_in_database(path):
-            #If there are no database entries, we use first review instead.
+        if not os.path.exists(path): on_error(1,'Invalid path given to log_review_completion') #If path doesn't exist, throw error.
+        if not FFMAN2.fetch_in_database(path):#If there are no database entries, we use first review instead.
             sm2dict = sm2.first_review(correctness)
             easiness, interval, repetitions, review_datetime = sm2dict['easiness'], sm2dict['interval'], sm2dict['repetitions'], sm2dict['review_datetime']
-            #FORMAT: id(int), entry_type(str), quality(int), easiness(float), review_datetime(str), path(str)
-            with sqlite3.connect('data.db') as conn:
-                cur = conn.cursor()
-                cur.execute('''INSERT INTO logs (entry_type,quality,easiness,review_datetime,path) VALUES ('review_log',?,?,?,?)''',(correctness,easiness,review_datetime,path))
-                conn.commit()
-            return
-        timestamp = datetime.utcnow()
+        else: #If there are database entries, we need to do a bit more work. review( quality, easiness, interval, repetitions, review_datetime=None )
+            quality = correctness
+            easiness = FFMAN2.determine_easiness(path)
+            repetitions = FFMAN2.determine_repetitions(path)
+            sm2dict = sm2.review(quality,easiness,repetitions)
+            #sm2dict has format: {'easiness': 1.4000000000000001, 'interval': 6, 'repetitions': 2, 'review_datetime': '2025-07-21 06:05:35'}
+            easiness, interval, repetitions, review_datetime = sm2dict['easiness'], sm2dict['interval'], sm2dict['repetitions'], sm2dict['review_datetime']
+        #FORMAT: id(int), entry_type(str), quality(int), easiness(float), review_datetime(str), path(str)
         with sqlite3.connect('data.db') as conn:
             cur = conn.cursor()
+            cur.execute(
+                '''INSERT INTO logs (entry_type,quality,easiness,review_datetime,path) VALUES ('review_log',?,?,?,?)''',
+                (correctness, easiness, review_datetime, path))
+            conn.commit()
+        return
 
     @staticmethod
     def scan_for_review(root='saves'):
@@ -275,35 +291,18 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
                             question_paths.append(question_path)
         return question_paths
     @staticmethod
-    def check_if_pending_review(qpath): #This checks if a given review card was reviewed recently:
-        if 'list' in str(type(qpath)):
-            on_error('1', 'Incorrect usage of check pending review function')
-        dbpath = 'assets/data/ffdb'
-        is_pending = True #This is the default value, but will change if a record says that it's not actually pending.
-        if not os.path.isfile(dbpath): #Check if database exists
-            on_error('1', 'Database file not found.')
-        lines = [line.strip() for line in open(dbpath)] #We will now read every line from the database
-        for line in lines:
-            if qpath in line: #Ignore all database entries that to not concern the file we are checking.
-                line = line[1:-1] #Cut off the brackets
-                line = line.replace('"','')
-                line = line.replace('\'','')
-                line = line.replace(' ','')
-                line = line.split(',') #Turn into a list
-                line[2] = make_boolean(line[2])
-                line[-1] = int(line[-1])
-                #print(line) #This is ugly. Really really ugly. But I don't have internet right now, so I can't google a more elegant solution.
-                #Note to self; remove jank
-                #In this version, we are not implementing SM2. Instead, we will just use the 1 day timer.
-                #['1', 'reviewcomplete', True, 'assets/data/ffdb', 1751767635]
-                rn = time.time()
-                diff = rn - line[4]
-                is_correct = line[2]
-                if is_correct: #i.e, false was reported
-                    if diff <= 86400: #If it's been a while, then say it's pending review. Otherwise, say there's no need.
-                        #In v2, we'll use an algo to determine this, instead of this crude method.
-                        is_pending = False
-        return is_pending
+    def check_if_pending_review(question_path: str) -> bool: #This checks if a given review card was reviewed recently:
+        data = FFMAN2.fetch_in_database(question_path)
+        if data:
+            most_recent_timestamp = data[-1][4]
+            unix_timestamp = int(datetime.strptime(most_recent_timestamp, '%Y-%m-%d %H:%M:%S.%f').timestamp())
+            right_now = str(datetime.utcnow())
+            unix_now = int(datetime.strptime(right_now, '%Y-%m-%d %H:%M:%S.%f').timestamp())
+            #If unix_timestamp is less than unix_now, that means that it's pending, as it's in the past.
+            return unix_timestamp < unix_now
+        else:
+            return True
+
     @staticmethod
     def fetchallpending():
         reviewableli = []
@@ -320,9 +319,8 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
 def autolearn(topic='all'):
     if topic != 'all':
         return FFMAN2.scan_for_review(topic)
-    elif topic == 'all':
+    else:
         return FFMAN2.fetchallpending()
-    else: return
 class Menu:
     @staticmethod
     def main_menu():
@@ -341,16 +339,23 @@ class Menu:
         print(question)
         print("Please type your response:")
         response = input()
-        correctness = QProc.is_correct(response,answer)
-        if correctness: #i.e. True
-            print("Correct! Moving to the next question...")
-            FFMAN2.log_review_completion(path, True)
+        print('The answer was:',answer)
+        if not response:
+            #Didn't even try. Lowest possible score.
+            FFMAN2.log_review_completion(path,0)
+            return
         else:
-            print("The Algorithm™ believes your response was incorrect. Override?")
-            override = menu("Override","override","Do not override","nope")
-            if override == "override":
-                print("Algorithm ignored. Human is supreme. Truth bends to your will.") #What the heck did I just write?
-                FFMAN2.log_review_completion(path, True)
-            elif override == 'nope':
-                FFMAN2.log_review_completion(path, False)
-        return
+            is_perfect = QProc.is_perfect(response, answer)
+        if is_perfect: #i.e. 5/5, perfect completion
+            print("Perfect score! Moving to the next question...")
+            FFMAN2.log_review_completion(path, 5)
+        else:
+            print("The Algorithm™ believes your response was imperfect.")
+            print("Please type in your score from 1-5. (5/5 is perfect)") #0/5 is reserved for when user doesn't even try.
+            while True:
+                manual_score = input()
+                if manual_score.isnumeric() and int(manual_score) in range(1,6):
+                    FFMAN2.log_review_completion(path,int(manual_score))
+                    return
+                else:
+                    print("Your input is invalid. Try again.")
