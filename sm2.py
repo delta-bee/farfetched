@@ -1,7 +1,12 @@
 from math import ceil
 from datetime import datetime, timedelta
 from typing import Optional, Union, Dict
-
+'''I do not own the code of SM2. I am not a neuroscientist, so I'm just going to use this
+module for spaced repetition instead. It is the one used by Anki, and it seems to be a good algo for this.
+However, I have made minor edits to this module that I believe improve it.
+I did not invent the SM2 algorithm nor implement it here.
+SM2 original python module: https://pypi.org/project/supermemo2/
+SuperMemo project site: https://www.super-memory.com/'''
 
 def review(
     quality: int,

@@ -8,7 +8,7 @@ from scipy.signal import correlate
 
 required_files = ['main.py','fflib.py','data.db','sm2.py']
 required_directories = ['saves']
-def on_error(severity='1', error_message="No error message was provided"):
+def on_error(severity: str or int='1', error_message: str="No error message was provided") -> None:
     #For severity, if it's 0, it won't stop the game, if it's 1, it will stop the game.
     print("Uh oh, an impossible state has occurred.")
     print(error_message)
@@ -21,7 +21,7 @@ def on_error(severity='1', error_message="No error message was provided"):
         print("The program cannot continue like this, and will now exit.")
         sys.exit()
 
-def make_boolean(string):  # Converts string literals to booleans
+def make_boolean(string: str) -> bool or str:  # Converts string literals to booleans
     if 'bool' in str(type(string)):
         return string #Return to sender
     string = string.lower()
@@ -31,8 +31,8 @@ def make_boolean(string):  # Converts string literals to booleans
         return False
     else:
         on_error('1', 'make_boolean was given an invalid input.')
-        return None #Stupid Pycharm, nagging me.
-def menu(*args):
+        sys.exit()
+def menu(*args) -> str:
     #Example input: "Eat the Burger","eat","Don't eat the burger","nah"
     #It will display the user "Eat the Burger" and then "Don't eat the burger"
     #And then this function will return with either "eat" or "nah" depending on what the user selected.
@@ -72,7 +72,7 @@ def menu(*args):
     #Now we have the user's selection, and we need to fetch from varlist the corresponding thing to return.
     selection = int(selection)- 1 #Lists start at 0, but the menu we displayed starts at 1, so we need to correct for this.
     return varlist[selection]
-def self_check():
+def self_check() -> None:
     #We will deploy os.walk() to crawl the contents of the current directory.
     fileli = []
     dirli = []
@@ -99,7 +99,7 @@ def self_check():
         print("Self check complete: Some issues were detected.")
 class QProc:
     @staticmethod
-    def fetch_question(path):
+    def fetch_question(path: str) -> tuple[str,str]:
         #The purpose of this function is to extract the question and answer from a path.
         #It may be later updated to work with future question formats, which may have greater functionality.
         if os.path.isfile(path):
@@ -110,18 +110,18 @@ class QProc:
                 return question, answer
             else:
                 on_error('1', 'fetchquestion() is unable to read this file format.')
-                return None
+                sys.exit()
         else:
             on_error('1', 'Invalid path given to fetch_question function.')
-            return None
+            sys.exit()
     @staticmethod
-    def strip_punctuation(string):
+    def strip_punctuation(string: str) -> str:
         discardables = ['\'', '\"', ',', ' ', ':', ';','-']  # update as needed
         for character in discardables:
             string = string.replace(character,'')
         return string
     @staticmethod
-    def extract_keywords(string):
+    def extract_keywords(string: str) -> list[str]:
         word_list = string.split(' ')
         keywords = []
         for word in word_list:
@@ -138,17 +138,15 @@ class QProc:
                 responseli = QProc.extract_keywords(responseli)
                 answerli = QProc.extract_keywords(answerli)
             else:
-                on_error('1', 'Incorrect data type given to QProc.iscorrect()')
+                on_error('1', 'Incorrect data type given to QProc.is_perfect()')
 
         correct_keywords = 0
         incorrect_keywords = 0
         for keyword in answerli:
             if keyword in responseli:
                 correct_keywords += 1
-                #print(keyword,"is correct")
             else:
                 incorrect_keywords +=1
-                #print(keyword,"is incorrect")
         #The previous portion of code determines how many keywords were correct, and how many were incorrect.
         #We will now determine whether we will accept this answer as perfect.
         correctness_threshold = 0.8 #We will accept 60% or higher accuracy. Keep in mind that user will be able to override this crude algorithm.
@@ -156,7 +154,7 @@ class QProc:
             return True
         else:
             return False
-def topiclist():
+def topiclist() -> str:
     topicli = os.listdir('saves')
     nutopicli = [] #All of this is just to make the menu command.
     for x in topicli:
@@ -194,9 +192,9 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
             cursor.execute(command)
             connection.commit()
     @staticmethod
-    def determine_repetitions(path: str):
+    def determine_repetitions(path: str) -> int:
         #This function should really only be used with fetch_in_database, unless you're insane.
-        #Ex input: (5.0, 5, 'today', 'saves/topicexample/lessonexample/chunkexample/contentexample')
+        #Ex input: (5.0, 5, 'today', 'saves/topicexample/lessonexample/chunkexample/questions/q1.ffq1')
         dbcontents: List[Tuple[int]] = []
         if not os.path.exists('data.db'):
             FFMAN2.create_database() #If database does not exist, call upon the create database function.
@@ -279,7 +277,7 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
         return
 
     @staticmethod
-    def scan_for_review(root='saves'):
+    def scan_for_review(root: str='saves') -> list:
         question_paths = []
         for root, dirs, file in os.walk(root):
             if file:
@@ -304,7 +302,7 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
             return True
 
     @staticmethod
-    def fetchallpending():
+    def fetchallpending() -> list:
         reviewableli = []
         allquestions =FFMAN2.scan_for_review()
         for questionfile in allquestions:
@@ -313,17 +311,16 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
                 reviewableli.append(questionfile)
                 #print(questionfile,'has been accepted')
         return reviewableli
-    @staticmethod
-    def fetch_next_review():
-        pass
-def autolearn(topic='all'):
+
+
+def autolearn(topic: str='all') -> list:
     if topic != 'all':
         return FFMAN2.scan_for_review(topic)
     else:
         return FFMAN2.fetchallpending()
 class Menu:
     @staticmethod
-    def main_menu():
+    def main_menu() -> str:
         choice = menu("Auto-Learn", "autolearn", "Perform self-check", 'self_check')
         if choice == 'autolearn':
             questions_to_ask = autolearn('all')
@@ -334,7 +331,7 @@ class Menu:
             self_check()
         return 'Menu.main_menu()'
     @staticmethod
-    def ask_question(path):
+    def ask_question(path: str) -> None:
         question,answer = QProc.fetch_question(path)
         print(question)
         print("Please type your response:")

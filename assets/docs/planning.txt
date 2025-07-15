@@ -1,7 +1,7 @@
 File for storing ideas about how this program will operate:
 
 Base program- Limited to the terminal for user interaction
-1. Lessions will be stored in "Bits", short paragraphs of ideas.
+1. Lessons will be stored in "Bits", short paragraphs of ideas.
 Here is an excerpt of Two Treatises of Government by John Locke:
 '''
 141. Fourthly. The legislative cannot transfer the power of making
@@ -25,14 +25,23 @@ The legislative cannot transfer the power of making
 laws to any other hands, for it being but a delegated power from the
 people, they who have it cannot pass it over to others.
 '''
-Bytes will be composed of several bits. This bridge will be crossed later, and this document
-updated.
+Lessons are in the following heirarchy:
+Topics contain lessons
+lessons contain chunks
+chunk directory contain text and optionally questions.
 
-TO DO LIST (as of version 0):
-1. Create a way to create bits and store them in some sort of directory tree.
-2. Tag these files with data about when they were reviewed, and how many reviews they have gone through.
-3. Write more stuff on the to do list
+Example:
+Topic: Hardware Basics
+Lesson: Motherboard
+Chunk: CMOS
+Question(s) [optional]: What is the function of the CMOS chip?
 
+As of v1.0.0, questions are simply scanned for and then prompted if left unreviewed.
+Version 2 will implement lessons that unlock in an order.
+As a result, we can only prompt for questions of a lesson that have already been seen.
+In order for a lesson to be seen, the program will need to present the lesson to the user.
+For this to happen, the lesson needs to be available for learning.
+We'll need a manifest file.
 
 Reasons for development:
 This program will be a sort of crossbreed between Kinnu and Anki. Kinnu is a program that uses
