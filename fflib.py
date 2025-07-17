@@ -1,10 +1,7 @@
 #Library for FarFetched
-#Shamelessly reuse code from previous projects, for efficiency
 import sys, os, time, sqlite3, sm2
 from typing import List, Union, Tuple #I was told my stuff's more readable if I use this.
 from datetime import datetime
-
-from scipy.signal import correlate
 
 required_files = ['main.py','fflib.py','data.db','sm2.py']
 required_directories = ['saves']
@@ -20,6 +17,12 @@ def on_error(severity: str or int='1', error_message: str="No error message was 
     else:
         print("The program cannot continue like this, and will now exit.")
         sys.exit()
+
+def get_immediate_child_directories(path: str) -> list[str]:
+    return [os.path.join(path,directory) for directory in os.listdir(path) if os.path.isdir(os.path.join(path, directory))]
+
+def strip_path(path: str) -> str:
+    return path.split(os.sep)[-1]
 
 def make_boolean(string: str) -> bool or str:  # Converts string literals to booleans
     if 'bool' in str(type(string)):
@@ -101,7 +104,6 @@ class QProc:
     @staticmethod
     def fetch_question(path: str) -> tuple[str,str]:
         #The purpose of this function is to extract the question and answer from a path.
-        #It may be later updated to work with future question formats, which may have greater functionality.
         if os.path.isfile(path):
             lines = [line.strip() for line in open(path)]
             if 'FF1' in lines[0]:
@@ -154,15 +156,15 @@ class QProc:
             return True
         else:
             return False
-def topiclist() -> str:
-    topicli = os.listdir('saves')
-    nutopicli = [] #All of this is just to make the menu command.
-    for x in topicli:
-        nutopicli.append(x)
-        nutopicli.append(x)
+def topic_list() -> str:
+    topic_directory_list = os.listdir('saves')
+    new_topic_list = [] #All of this is just to make the menu command.
+    for x in topic_directory_list:
+        new_topic_list.append(x)
+        new_topic_list.append(x)
     #menu("topic1","topic1","topic2","topic2")
     param_head = "menu(\""
-    param_body = '\",\"'.join(nutopicli)
+    param_body = '\",\"'.join(new_topic_list)
     param_tail = "\")"
     complete_command = param_head + param_body + param_tail
     #Everything we've done in those lines above is set up to execute a menu command listing all of the topics.
@@ -172,6 +174,8 @@ def topiclist() -> str:
     except Exception as e:
         print(complete_command)
         print(f"An error occurred: {e}")
+        on_error('1','topic_list has suffered an error, now exiting.')
+        sys.exit()
     topic_path_head = 'saves/'
     return topic_path_head +str(choice) #This program speaks in paths. Therefore, we will return the relative path, instead of merely the directory name.
     #This is a terrible way to do it, but at least we can list out the topics now.
@@ -195,17 +199,17 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
     def determine_repetitions(path: str) -> int:
         #This function should really only be used with fetch_in_database, unless you're insane.
         #Ex input: (5.0, 5, 'today', 'saves/topicexample/lessonexample/chunkexample/questions/q1.ffq1')
-        dbcontents: List[Tuple[int]] = []
+        db_contents: List[Tuple[int]] = []
         if not os.path.exists('data.db'):
             FFMAN2.create_database() #If database does not exist, call upon the create database function.
         with sqlite3.connect('data.db') as conn:
             cur = conn.cursor()
             cur.execute('''SELECT id,quality FROM logs WHERE path = ?''',(path,))
             for entry in cur:
-                dbcontents.append(entry)
+                db_contents.append(entry)
         repetitions = 0
         #Right now, DB Contents is a list of tuples with just one integer in them.
-        for quality_tuple in dbcontents: #Increment by 1 for every entry that has the path in it.
+        for quality_tuple in db_contents: #Increment by 1 for every entry that has the path in it.
             #print(quality_tuple[0])This seems like it's going in order. If it's not, we'll figure out soon enough.
             review_quality = quality_tuple[1]
             if review_quality > 2:
@@ -240,7 +244,6 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
         for output_entry in dbcontents:
             if output_entry:
                 try:
-                    #(5.0 (easiness), 5, '2025-03-02 09:12:30.654321', 'saves/topicexample/lessonexample/chunkexample/questions/q1.ffq1')
                     #We are repacking the contents of cur (database cursor) into a list, so that we may return the contents.
                     quality = int(output_entry[0])
                     easiness = float(output_entry[1])
@@ -256,7 +259,7 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
     def log_review_completion(path: str,correctness: int)-> None:
         if not os.path.exists('data.db'):
             FFMAN2.create_database()
-        if not os.path.exists(path): on_error(1,'Invalid path given to log_review_completion') #If path doesn't exist, throw error.
+        if not os.path.exists(path): on_error('1','Invalid path given to log_review_completion') #If path doesn't exist, throw error.
         if not FFMAN2.fetch_in_database(path):#If there are no database entries, we use first review instead.
             sm2dict = sm2.first_review(correctness)
             easiness, interval, repetitions, review_datetime = sm2dict['easiness'], sm2dict['interval'], sm2dict['repetitions'], sm2dict['review_datetime']
@@ -302,33 +305,100 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
             return True
 
     @staticmethod
-    def fetchallpending() -> list:
-        reviewableli = []
-        allquestions =FFMAN2.scan_for_review()
-        for questionfile in allquestions:
-            #print(questionfile,"is being checked")
-            if FFMAN2.check_if_pending_review(questionfile):
-                reviewableli.append(questionfile)
-                #print(questionfile,'has been accepted')
-        return reviewableli
+    def fetch_all_pending() -> list:
+        reviewable_list = []
+        all_questions =FFMAN2.scan_for_review()
+        for question_file in all_questions:
+            if FFMAN2.check_if_pending_review(question_file):
+                reviewable_list.append(question_file)
+        return reviewable_list
+class ManifestHandler: #This will handle the processing of manifests and whatnot.
+    @staticmethod
+    def scan_for_manifests(directory: str = 'saves') -> List[List[str]]: #Scans for manifests in the saves directory, returns paths
+        lesson_manifest_list = []
+        chunk_manifest_list = []
+        for root, dirs, files in os.walk(directory):
+            #print(files)
+            if 'manifest' in str(files) and '.txt' in str(files):
+                filename = files[0]
+                if str(root).count(os.path.sep) == 1: #We're just going to count the amount of slashes or whatever to know if it's a chunk manifest or a lesson manifest.
+                    lesson_manifest_list.append(os.path.join(root,filename))
+                elif str(root).count(os.path.sep) == 2:
+                    chunk_manifest_list.append(os.path.join(root,filename))
+                else:
+                    on_error(1,'Scan_for_manifests believes that the saves directory is faulty.')
+        return [lesson_manifest_list,chunk_manifest_list]
+    @staticmethod
+    def evaluate_manifest(manifest_path: str,completed_paths: list = [str]):
+        completed_paths = [strip_path(path) for path in completed_paths]
+        accessible_paths = [] #Note: Completed paths are ones that the user has already learned. Accessible ones are the ones that the user is now able to learn.
+        with open(manifest_path) as manifest:
+            for clause in manifest:
+                #[Lesson] "REQUIRES" [Lesson_Dependency1], [Lesson_Dependency2], [Lesson_Dependency3], etc
+                clause = clause.replace(',','')
+                clause = clause.replace('\n','')
+                clause_as_list = clause.split(' ')
+                if len(clause_as_list) == 2:
+                    accessible_paths.append(clause_as_list[0]) #If there is no dependencies, unlock it.
+                else:
+                    accessible_or_not = True
+                    for dependency in clause_as_list[2: ]:
+                        if dependency not in completed_paths:
+                            accessible_or_not = False
+                    if accessible_or_not:
+                        accessible_paths.append(clause_as_list[0])
+            return accessible_paths
 
+    @staticmethod
+    def get_available_chunks() -> List[str]:
+        """
+        Returns a list of chunk manifests for
+        """
+        #Step 1: Get all lesson manifests in topic directory
+        lesson_manifests = ManifestHandler.scan_for_manifests()[0]
+        #Step 2: Remove lesson manifests that do not have any accessible lessons
+        valid_lesson_manifests = [lesson_manifest for lesson_manifest in lesson_manifests if ManifestHandler.evaluate_manifest(lesson_manifest)]
 
-def autolearn(topic: str='all') -> list:
-    if topic != 'all':
-        return FFMAN2.scan_for_review(topic)
-    else:
-        return FFMAN2.fetchallpending()
+        #Step 3: If the lesson manifest in the topic directory is valid, then the topic directory is valid.
+        valid_topic_directories = [os.path.split(valid_lesson_manifest)[0] for valid_lesson_manifest in valid_lesson_manifests]
+
+        # We now need to find a valid chunk manifest (which is found within a lesson directory, as opposed to the lesson manifest which is in the topic directory)
+
+        #Step 4: Get all lesson directories within valid topic directories.
+        lesson_directories = [get_immediate_child_directories(valid_topic_directory) for valid_topic_directory in valid_topic_directories][0]
+
+        #Step 5: Check if these lesson directories have a valid chunk manifest inside of them
+        valid_lesson_directories = [lesson_path for lesson_path in lesson_directories if ManifestHandler.scan_for_manifests(lesson_path)[1]]
+
+        #Step 6: Get available chunks from these directories and return them.
+        available_chunk_manifests = []
+        for directory in valid_lesson_directories:
+            chunk_manifests = ManifestHandler.scan_for_manifests(directory)[1]
+            for manifest in chunk_manifests:
+                if manifest:
+                    chunk_manifests = ManifestHandler.evaluate_manifest(manifest)
+                    chunk_manifests = [os.path.join(directory,manifest) for manifest in chunk_manifests] #God bless list comprehensions. Sorry if this function has too many of them, but I'm learning this stuff and weaving it into my brain the more I use them.
+                    available_chunk_manifests = available_chunk_manifests + chunk_manifests
+        return available_chunk_manifests
 class Menu:
     @staticmethod
+    def answer_questions(topic: str = 'all') -> List[str]:
+        if topic != 'all':
+            return FFMAN2.scan_for_review(topic)
+        else:
+            return FFMAN2.fetch_all_pending()
+
+
+    @staticmethod
     def main_menu() -> str:
-        choice = menu("Auto-Learn", "autolearn", "Perform self-check", 'self_check')
-        if choice == 'autolearn':
-            questions_to_ask = autolearn('all')
+        choice = menu("Learn a lesson","learn_lesson","Answer Questions", "answer_questions", "Perform self-check", 'self_check')
+        if choice == 'answer_questions':
+            questions_to_ask = Menu.answer_questions('all')
             for question in questions_to_ask:
                 Menu.ask_question(question)
             print("Finished asking questions.")
-        elif choice == 'self_check':
-            self_check()
+        else:
+            eval('Menu.'+choice+'()')
         return 'Menu.main_menu()'
     @staticmethod
     def ask_question(path: str) -> None:
@@ -339,11 +409,12 @@ class Menu:
         print('The answer was:',answer)
         if not response:
             #Didn't even try. Lowest possible score.
+            print("You did not provide an answer. Program will assume an incorrect answer.")
             FFMAN2.log_review_completion(path,0)
             return
         else:
             is_perfect = QProc.is_perfect(response, answer)
-        if is_perfect: #i.e. 5/5, perfect completion
+        if is_perfect:
             print("Perfect score! Moving to the next question...")
             FFMAN2.log_review_completion(path, 5)
         else:
@@ -356,3 +427,26 @@ class Menu:
                     return
                 else:
                     print("Your input is invalid. Try again.")
+                    return
+    @staticmethod
+    def display_lesson(lesson_path):
+        with open(lesson_path) as text_file:
+            for line in text_file:
+                print(line)
+            print("Press ENTER to continue.")
+            input()
+    @staticmethod
+    def learn_lesson() -> bool or str:
+        available_chunk_manifests = ManifestHandler.get_available_chunks()
+        def has_content_file(chunk_directory:str) -> bool or str:
+            content_path = os.path.join(chunk_directory,'content.txt')
+            if not os.path.exists(content_path) or '.txt' not in content_path:
+                return False
+            else:
+                return content_path
+        for chunk in available_chunk_manifests:
+            chunk_path = has_content_file(chunk)
+            if chunk_path:
+                Menu.display_lesson(chunk_path)
+
+

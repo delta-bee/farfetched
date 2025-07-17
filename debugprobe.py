@@ -1,5 +1,7 @@
 from fflib import *
 import sm2
 from datetime import datetime
-#FFMAN2.log_review_completion('saves/topicexample/lessonexample/chunkexample/questions/q1.ffq1',5)
-#FFMAN2.check_if_pending_review('saves/topicexample/lessonexample/chunkexample/questions/q1.ffq1')
+#print(ManifestHandler.scan_for_manifests())
+#ManifestHandler.evaluate_manifest('saves/topicexample2/lessonlists/chunkmanifest.txt')
+#ManifestHandler.lesson_manifest_contains_chunks('saves/topicexample2/lessonmanifest.txt')
+j =ManifestHandler.get_available_chunks()

@@ -2,3 +2,5 @@ The topic directory needs to tell my program what order the lessons should go in
 In no particular order...
 [Lesson] "REQUIRES" [Lesson_Dependency1], [Lesson_Dependency2], [Lesson_Dependency3], etc
 Apples REQUIRES Bananas, Grapes
+This is also how chunks will work.
+If it has no requirements, simply don't put any dependencies after REQUIRES.
