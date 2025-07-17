@@ -194,7 +194,30 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
                     path TEXT
                 )''' #We are not including repetitions because I'd rather calculate that myself, and Interval could get messed up if the user reviews the card beyond the program's desired review date.
             cursor.execute(command)
+            other_command = '''CREATE TABLE IF NOT EXISTS learned (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    question_path TEXT,
+                    chunk_path TEXT,
+                    lesson_path TEXT,
+                    topic_path TEXT
+                )''' #I'm not sure if I'm going to use all of those columns.
+            cursor.execute(other_command)
             connection.commit()
+    @staticmethod
+    def check_if_completed(learned_path) -> bool: #Currently only supports chunks.
+        if not os.path.exists('data.db'):
+            FFMAN2.create_database()
+        with sqlite3.connect('data.db') as conn:
+            cur = conn.cursor()
+            cur.execute(
+                '''SELECT * FROM learned WHERE chunk_path = ?''',
+                (learned_path,)
+            )
+            cur_contents = [x for x in cur]
+            if cur_contents:
+                return True
+            else:
+                return False
     @staticmethod
     def determine_repetitions(path: str) -> int:
         #This function should really only be used with fetch_in_database, unless you're insane.
@@ -312,6 +335,18 @@ class FFMAN2: #Handles the translation between the "database" and the rest of th
             if FFMAN2.check_if_pending_review(question_file):
                 reviewable_list.append(question_file)
         return reviewable_list
+
+    @staticmethod
+    def log_chunk_completion(chunk_path: str) -> None:
+        if not os.path.exists('data.db'):
+            FFMAN2.create_database()
+        with sqlite3.connect('data.db') as conn:
+            cur = conn.cursor()
+            cur.execute(
+                '''INSERT INTO learned (chunk_path) VALUES (?)''',
+                (chunk_path,)
+            )
+
 class ManifestHandler: #This will handle the processing of manifests and whatnot.
     @staticmethod
     def scan_for_manifests(directory: str = 'saves') -> List[List[str]]: #Scans for manifests in the saves directory, returns paths
@@ -401,7 +436,10 @@ class Menu:
             eval('Menu.'+choice+'()')
         return 'Menu.main_menu()'
     @staticmethod
-    def ask_question(path: str) -> None:
+    def self_check():
+        self_check() #Just an alias
+    @staticmethod
+    def ask_question(path: str) -> bool: #True if they got it correct, False if they didn't.
         question,answer = QProc.fetch_question(path)
         print(question)
         print("Please type your response:")
@@ -411,7 +449,7 @@ class Menu:
             #Didn't even try. Lowest possible score.
             print("You did not provide an answer. Program will assume an incorrect answer.")
             FFMAN2.log_review_completion(path,0)
-            return
+            return False
         else:
             is_perfect = QProc.is_perfect(response, answer)
         if is_perfect:
@@ -423,20 +461,25 @@ class Menu:
             while True:
                 manual_score = input()
                 if manual_score.isnumeric() and int(manual_score) in range(1,6):
-                    FFMAN2.log_review_completion(path,int(manual_score))
-                    return
+                    manual_score = int(manual_score)
+                    FFMAN2.log_review_completion(path,manual_score)
+                    if int(manual_score) >= 3:
+                        return True
+                    else:
+                        return False
                 else:
                     print("Your input is invalid. Try again.")
-                    return
     @staticmethod
     def display_lesson(lesson_path):
         with open(lesson_path) as text_file:
             for line in text_file:
                 print(line)
-            print("Press ENTER to continue.")
+            print("Press ENTER to continue to questions.")
             input()
+
     @staticmethod
     def learn_lesson() -> bool or str:
+        print("Alright! Time to learn something new.")
         available_chunk_manifests = ManifestHandler.get_available_chunks()
         def has_content_file(chunk_directory:str) -> bool or str:
             content_path = os.path.join(chunk_directory,'content.txt')
@@ -444,9 +487,21 @@ class Menu:
                 return False
             else:
                 return content_path
-        for chunk in available_chunk_manifests:
-            chunk_path = has_content_file(chunk)
-            if chunk_path:
+
+
+        for chunk_dir in available_chunk_manifests:
+            chunk_path = has_content_file(chunk_dir)
+            if chunk_path and not FFMAN2.check_if_completed(chunk_path): #Check that chunk_path isn't blank and that it's hasn't already been completed.
                 Menu.display_lesson(chunk_path)
+                question_list = FFMAN2.scan_for_review(os.path.split(chunk_dir)[0])
+                for question in question_list: #Ask all questions in this chunk, don't stop until they get it all correct at least once.
+                    while question_list:
+                        if Menu.ask_question(question):
+                            break
+                #Now they've answered all of the questions!
+                #So we'll log that the chunk is complete.
+                FFMAN2.log_chunk_completion(chunk_path)
+
+
 
 

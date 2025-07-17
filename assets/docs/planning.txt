@@ -36,12 +36,10 @@ Lesson: Motherboard
 Chunk: CMOS
 Question(s) [optional]: What is the function of the CMOS chip?
 
-As of v1.0.0, questions are simply scanned for and then prompted if left unreviewed.
-Version 2 will implement lessons that unlock in an order.
-As a result, we can only prompt for questions of a lesson that have already been seen.
-In order for a lesson to be seen, the program will need to present the lesson to the user.
-For this to happen, the lesson needs to be available for learning.
-We'll need a manifest file.
+When a lesson is answered, the program should unlock the questions under that lesson.
+When all questions have been sucessfully answered, the lesson should be marked as "Completed."
+I need to write more database protocol.
+
 
 Reasons for development:
 This program will be a sort of crossbreed between Kinnu and Anki. Kinnu is a program that uses

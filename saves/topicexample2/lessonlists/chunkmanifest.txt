@@ -1,2 +1,2 @@
 chunkindexing REQUIRES
-chunklistcomprehensions REQUIRES
+chunklistcomprehensions REQUIRES chunkindexing

@@ -1,6 +1,5 @@
 Following the removal of FFDB1, FarFetched will now use FFDB2 for all of its persistent memory (excluding lesson files).
 FFDB2 is the protocol of FarFetched's data.db file, which is implemented with SQLite.
-data.db has only one table, 'logs'.
 
 Database (FFDB2) entry types:
     In table Logs:
@@ -9,3 +8,6 @@ Database (FFDB2) entry types:
     FORMAT: id(int), entry_type(str, just says "review_log"), quality (int), easiness(float), review_datetime(str), path(str)
     Downstream, the project needs to know quality, easiness, interval, repetitions, review_datetime=None
     However, we can use current datetime, calculate intervals and repetitions ourselves, so we only need to get quality, easiness from the database, with the datetime of the review log to calculate a correct interval.
+
+    In table lessons:
+    Lesson complete declaration - For when the lesson has had their questions answered and the lesson is remembered
