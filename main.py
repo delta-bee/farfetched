@@ -1,3 +1,8 @@
+#This work is licensed under the GLP-3 license. FarFetched is free/libre open source software (FLOSS).
+#For inquiries, please contact:
+#- Matrix: @sl8:matrix.org
+#- Email: sl8@o8.lol
+
 from fflib import *
 intro_ascii_art = r"""
   ______         ______   _       _              _ 
@@ -8,6 +13,6 @@ intro_ascii_art = r"""
  |_|  \__,_|_|  |_|  \___|\__\___|_| |_|\___|\__,_|
 """
 print(intro_ascii_art)
-print("FarFetched, Alpha, Commit #23")
+print("FarFetched, Alpha, Commit #25")
 while True:
     eval(Menu.main_menu())
