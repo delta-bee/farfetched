@@ -1,2 +1,0 @@
-lessonlists REQUIRE lessonvariables
-lessonvariables REQUIRE

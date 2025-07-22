@@ -4,6 +4,13 @@ from typing import List, Union, Tuple
 normal_cwd = os.getcwd()
 #You guys ever wonder if this will ever actually take off? If it does, I'd be so happy.
 #Maintaining this code might be pain though. I need to write better documentation...
+def strip_path(path: str, list_index: int) -> str:
+    """
+    :param path: A string representing a path. Ex. Topic2/Lesson/Chunk1
+    :param list_index: The index of the list that you want to strip from the path. Ex. 2 for Chunk, 1 for Lesson, 0 for Topic.
+    :return: The chunk name, without the path. Ex. Chunk1
+    """
+    return path.split(os.sep)[list_index]
 def strip_punctuation(string: str) -> str: #Slightly modified version found in FFLIB.py, it allows spaces.
     discardables = ['\'', '\"', ',', ':', ';', '-', '.','/']
     for character in discardables:
@@ -113,48 +120,50 @@ def lesson_manifest_creator(user_input: List[List[str]]) -> None:
     return None
 
 def chunk_manifest_creator(lesson_chunks:List[List[str]]) -> None:
-    list_of_chunks = [] #flattened
-    for chunk_list in lesson_chunks:
-        for chunk in chunk_list:
-            list_of_chunks.append(os.path.split(chunk)[1])
-    print(list_of_chunks)
-    for lesson in lesson_chunks:
-        list_of_chunk_declarations = []
-        lesson_path = os.path.split(lesson[0])[0] #> Topic/Lesson
-        absolute_lesson_path = os.path.join(normal_cwd,'saves',lesson_path) #It was getting screwy, so we're just going to use this now.
+    #Copying and pasting the code for lesson_manifest creator was a mistake. I'm just going to rewrite all of this.
+    """
+    Create a manifest file for all of the chunks in each lesson.
 
-        if not os.path.exists(absolute_lesson_path):
-            raise FileNotFoundError('Lesson directory does not exist. Are you calling chunk_manifest_creator() without having run setup_directories() first?')
-        #We'll be sticking the manifest in the lesson directory.
-        for chunk_path in lesson:
-            chunk = os.path.split(chunk_path)[1]
-            print(f"For chunk \"{chunk}\", please tell me if requires any other chunk to be learned first.")
+    :param lesson_chunks: A list of lists. The top level list is the list of lessons, and the second level list is the list of chunks in that lesson.
+        Ex. [['Topic2/Lesson/Chunk1', 'Topic2/Lesson/Chunk2'], ['Topic2/Lesson2/Chunk3', 'Topic2/Lesson2/Chunk4']]
+        Note that the "chunks" are relative paths, not just the chunk names.
+    :return: None
+    """
+    for chunk_paths_in_lesson in lesson_chunks:
+        chunk_names_in_lesson = [strip_path(chunk,2) for chunk in chunk_paths_in_lesson]
+        list_of_manifest_declarations = []
+        for chunk in chunk_paths_in_lesson:
+            chunk_name = strip_path(chunk,2)
+            print(f"For chunk \"{chunk_name}\", please tell me if requires any other chunk to be learned first.")
             print("Type in the chunk name(s) that need to be learned before this, and then press enter. Type DONE when you're done entering chunk names.")
-            dependency_list = []
+            print(f"Chunk names in this lesson: {chunk_names_in_lesson}")
+            dependency_list = [] #Note: This shouldn't be shared across lessons. That'll break something downstream.
             while True:
                 entry = input()
                 if entry.upper() == "DONE":
                     break
+                elif entry == chunk_name:
+                    print("Chunk can't depend on itself, silly. Try again.")
+                    continue
+                elif entry in chunk_names_in_lesson:
+                    dependency_list.append(entry)
                 else:
-                    if entry.lower() == chunk.lower():
-                        print("Chunk can't depend on itself. Try again.")
-                        continue
-                    elif entry in list_of_chunks:
-                        dependency_list.append(entry)
-                    else:
-                        print(f"Unknown chunk '{entry}'. Try again.")
-            # Now we've got the list of dependencies, so we'll put it in the format that manifesthandler will understand.
-            chunk_manifest_declaration = chunk + ' REQUIRES ' + ' '.join(dependency_list)
-            list_of_chunk_declarations.append(chunk_manifest_declaration)
-
-        # And now, write it to the lesson directory.
-        manifest_text_file_contents = "\n".join(list_of_chunk_declarations)
-        #This is IN the for loop, since we're writing multiple files to multiple directories.
-        target = os.path.join(absolute_lesson_path,'chunkmanifest.txt')
-        with open(target,'w') as file:
-           file.write(manifest_text_file_contents)
-
+                    print("Unknown chunk. Try again.")
+            chunk_without_path = os.path.split(chunk)[1]
+            list_of_manifest_declarations.append(chunk_without_path + ' REQUIRES ' + ' '.join(dependency_list))
+        #Now, we have all of the chunk dependencies in this individual lesson.
+        #We'll convert this list into a string, and then write that string to the lesson directory.
+        manifest_content = "\n".join(list_of_manifest_declarations)
+        topic_name = strip_path(chunk,0)
+        lesson_name = strip_path(chunk,1)
+        file_target = os.path.join(normal_cwd,'saves',topic_name,lesson_name,'chunkmanifest.txt')
+        with open(file_target,'w') as manifest_file:
+            manifest_file.write(manifest_content)
 def main():
+    print("Welcome to FarFetched's Assembler!")
+    print("This program will help you assemble your own custom lessons for FarFetched.")
+    print("Please note that this program is still in development. It may not work as intended.")
+    #OH NO. It's going to be a nightmare allowing editing functionality.
     # Step 1, check for all database files.
     dir_contents = os.listdir()
     db_files = [file for file in dir_contents if '.db' in file and file != 'data.db']
@@ -215,9 +224,8 @@ def main():
     for lesson_chunks in chunk_paths:
         ask_questions(lesson_chunks)
     lesson_manifest_creator(user_inputs)
-    print(chunk_paths)
     chunk_manifest_creator(chunk_paths)
-
+    print("Assembly complete. You can now find your new topic in the \"saves\" folder.")
     #Now we've got all of the content. Now we need to ask for the chunk's questions
 if __name__ == '__main__':
     main()

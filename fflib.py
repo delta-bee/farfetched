@@ -1,5 +1,5 @@
 #Library for FarFetched
-import sys, os, time, sqlite3, sm2
+import sys, os, time, sqlite3, sm2, assembler
 from typing import List, Union, Tuple #I was told my stuff's more readable if I use this.
 from datetime import datetime
 
@@ -426,7 +426,7 @@ class Menu:
 
     @staticmethod
     def main_menu() -> str:
-        choice = menu("Learn a lesson","learn_lesson","Answer Questions", "answer_questions", "Perform self-check", 'self_check')
+        choice = menu("Learn a lesson","learn_lesson","Make new lesson","create_new_lesson","Answer Questions", "answer_questions", "Perform self-check", 'self_check')
         if choice == 'answer_questions':
             questions_to_ask = Menu.answer_questions('all')
             for question in questions_to_ask:
@@ -435,6 +435,9 @@ class Menu:
         else:
             eval('Menu.'+choice+'()')
         return 'Menu.main_menu()'
+    @staticmethod
+    def create_new_lesson():
+        assembler.main()
     @staticmethod
     def self_check():
         self_check() #Just an alias
