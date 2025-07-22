@@ -118,7 +118,7 @@ class QProc:
             sys.exit()
     @staticmethod
     def strip_punctuation(string: str) -> str:
-        discardables = ['\'', '\"', ',', ' ', ':', ';','-']  # update as needed
+        discardables = ['\'', '\"', ',', ' ', ':', ';','-','.','/']
         for character in discardables:
             string = string.replace(character,'')
         return string
@@ -151,7 +151,7 @@ class QProc:
                 incorrect_keywords +=1
         #The previous portion of code determines how many keywords were correct, and how many were incorrect.
         #We will now determine whether we will accept this answer as perfect.
-        correctness_threshold = 0.8 #We will accept 60% or higher accuracy. Keep in mind that user will be able to override this crude algorithm.
+        correctness_threshold = 0.8 #We will accept 80% or higher accuracy.
         if correct_keywords / (correct_keywords+incorrect_keywords) >= correctness_threshold:
             return True
         else:

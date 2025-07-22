@@ -4,9 +4,11 @@ from datetime import datetime
 #print(ManifestHandler.scan_for_manifests())
 #ManifestHandler.evaluate_manifest('saves/topicexample2/lessonlists/chunkmanifest.txt')
 #ManifestHandler.lesson_manifest_contains_chunks('saves/topicexample2/lessonmanifest.txt')
-import assembler
-chunk_paths = assembler.setup_directories()
-for lesson_chunks in chunk_paths:
-    assembler.populate_chunks(lesson_chunks)
-for lesson_chunks in chunk_paths:
-    assembler.ask_questions(lesson_chunks)
+topic_heap = [['Topic2/Lesson/Chunk1', 'Topic2/Lesson/Chunk2'], ['Topic2/Lesson2/Chunk3', 'Topic2/Lesson2/Chunk4']]
+flattened_list = []
+for topic in topic_heap:
+    print(topic)
+    for lesson in topic:
+        print(lesson)
+        flattened_list.append(os.path.split(lesson)[1])
+print(flattened_list)
