@@ -4,6 +4,7 @@ from typing import List, Union, Tuple, TypeVar
 normal_cwd = os.getcwd()
 #You guys ever wonder if this will ever actually take off? If it does, I'd be so happy.
 #Maintaining this code might be pain though. I need to write better documentation...
+#I HATE YOU ASSEMBLER.PY, YOU HYDRA OF BUGS.
 def strip_path(path: str, list_index: int) -> str:
     """
     :param path: A string representing a path. Ex. Topic2/Lesson/Chunk1
@@ -28,10 +29,18 @@ def flatten_list(nested_list: List[List[TypeVar]]) -> List[TypeVar]:
             else:
                 flattened_list.append(item)
         nested_list = flattened_list
+    #I think my AI code completer made this. I don't really understand it, but it passes the tests.
+    #:shrug:
     return nested_list
 
 
 def strip_punctuation(string: str) -> str: #Slightly modified version found in FFLIB.py, it allows spaces.
+    """
+    Removes common punctuation from a string.
+    Returns a string with the punctuation removed.
+    :param string:
+    :return:
+    """
     discardables = ['\'', '\"', ',', ':', ';', '-', '.','/','!','?']
     for character in discardables:
         string = string.replace(character, '')
@@ -105,6 +114,8 @@ def populate_chunks(chunk_list: List[str]) -> None:
     :param chunk_list: A flat list of chunk paths. Ex. ['Topic2/Lesson/Chunk1', 'Topic2/Lesson/Chunk2']
     :return: None
     """
+    list_of_content_file_paths = []
+    list_of_content_file_contents = []
     for chunk in chunk_list:
         if 'saves' not in chunk.split(os.sep):
             chunk = os.path.join('saves',chunk)
@@ -121,6 +132,10 @@ def populate_chunks(chunk_list: List[str]) -> None:
                     content_input.append(new_input_line)
             #Now we've got their input, we will write it to content.txt
             content_file_path = os.path.join(chunk,'content.txt')
+            list_of_content_file_paths.append(content_file_path)
+            content_input_as_string = "\n".join(content_input)
+            list_of_content_file_contents.append(content_input_as_string)
+    write_contents_to_drive(list_of_content_file_paths,list_of_content_file_contents)
     return
 def write_contents_to_drive(list_of_paths: List[str],list_of_contents: List[str]) -> None:
     '''

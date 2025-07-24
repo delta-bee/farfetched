@@ -8,6 +8,7 @@ Keep the code modular.
 4. For super complex functions, write tests. If you can't, ask another contributor to help you.
 5. If you're a collaborator, do not push to stable. I should be the only one doing that, so that the code can be reviewed and tested.
 6. Contributors maintain copyright over their contributions, but agree to license it under GPL-3, with the rest of the code.
+7. Do not make another assembler.py. Please. For the love of god, don't write crappy code like that ever again.
 
 FarFetched Lessons (one containing lessons)
 1. Do not commit garbage. Please, make sure you're making quality content. Let's not misinform people on what a litote is.

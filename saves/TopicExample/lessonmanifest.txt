@@ -1,2 +1,0 @@
-LessonExample REQUIRES 
-LessonExample2 REQUIRES LessonExample

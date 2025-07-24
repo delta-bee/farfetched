@@ -1,7 +1,9 @@
 #Library for FarFetched
 import sys, os, time, sqlite3, sm2, assembler
-from typing import List, Union, Tuple #I was told my stuff's more readable if I use this.
+from typing import List, Union, Tuple, TypeVar #I was told my stuff's more readable if I use this.
 from datetime import datetime
+
+from assembler import strip_punctuation
 
 required_files = ['main.py','fflib.py','data.db','sm2.py']
 required_directories = ['saves']
@@ -18,10 +20,35 @@ def on_error(severity: str or int='1', error_message: str="No error message was 
         print("The program cannot continue like this, and will now exit.")
         sys.exit()
 
+def flatten_list(nested_list: List[List[TypeVar]]) -> List[TypeVar]:
+    """
+    :param nested_list: A list of lists.
+    :return flattened_list: A list of strings, or of lists.:
+
+    Note: If it is given a list that does not contain any lists, it will return the original list.
+    """
+
+    while any(isinstance(item,list) for item in nested_list):
+        flattened_list = []
+        for item in nested_list:
+            if isinstance(item,list):
+                flattened_list.extend(item)
+            else:
+                flattened_list.append(item)
+        nested_list = flattened_list
+    #I think my AI code completer made this. I don't really understand it, but it passes the tests.
+    #:shrug:
+    return nested_list
 def get_immediate_child_directories(path: str) -> list[str]:
     return [os.path.join(path,directory) for directory in os.listdir(path) if os.path.isdir(os.path.join(path, directory))]
 
 def strip_path(path: str) -> str:
+    """
+    It is given a path, and it will return the last part of the path.
+    Ex: /home/user/file.txt -> file.txt
+    :param path: The path to be stripped.
+    :return str: The last part of the path.:
+    """
     return path.split(os.sep)[-1]
 
 def make_boolean(string: str) -> bool or str:  # Converts string literals to booleans
@@ -102,17 +129,27 @@ def self_check() -> None:
         print("Self check complete: Some issues were detected.")
 class QProc:
     @staticmethod
-    def fetch_question(path: str) -> tuple[str,str]:
+    def fetch_question(path: str) -> tuple[str,str] or None:
+        """
+        This function will extract the question and answer from a path.
+        :param path: This is the path to the question file.
+        :return: This function will return a tuple containing the question and answer, or None if the path is invalid (like if it contains no question or answer).
+        """
         #The purpose of this function is to extract the question and answer from a path.
-        if os.path.isfile(path):
-            lines = [line.strip() for line in open(path)]
-            if 'FF1' in lines[0]:
-                question = lines[1]
-                answer = lines[2]
-                return question, answer
+        if os.path.isfile(path) and os.path.getsize(path) != 0:
+            lines = []
+            with open(path, 'r') as file:
+                for line in file:
+                    line = line.strip()
+                    if line:
+                        lines.append(line)
+
+            if not lines or len(lines) != 2 or all(line == '' for line in lines):
+                return None
             else:
-                on_error('1', 'fetchquestion() is unable to read this file format.')
-                sys.exit()
+                question = lines[0]
+                answer = lines[1]
+                return question, answer
         else:
             on_error('1', 'Invalid path given to fetch_question function.')
             sys.exit()
@@ -373,6 +410,7 @@ class ManifestHandler: #This will handle the processing of manifests and whatnot
                 clause = clause.replace(',','')
                 clause = clause.replace('\n','')
                 clause_as_list = clause.split(' ')
+                clause_as_list = [clause for clause in clause_as_list if clause]
                 if len(clause_as_list) == 2:
                     accessible_paths.append(clause_as_list[0]) #If there is no dependencies, unlock it.
                 else:
@@ -396,12 +434,15 @@ class ManifestHandler: #This will handle the processing of manifests and whatnot
 
         #Step 3: If the lesson manifest in the topic directory is valid, then the topic directory is valid.
         valid_topic_directories = [os.path.split(valid_lesson_manifest)[0] for valid_lesson_manifest in valid_lesson_manifests]
-
+        if not valid_topic_directories:
+            return []
         # We now need to find a valid chunk manifest (which is found within a lesson directory, as opposed to the lesson manifest which is in the topic directory)
 
         #Step 4: Get all lesson directories within valid topic directories.
-        lesson_directories = [get_immediate_child_directories(valid_topic_directory) for valid_topic_directory in valid_topic_directories][0]
-
+        lesson_directories = [get_immediate_child_directories(valid_topic_directory) for valid_topic_directory in valid_topic_directories]
+        #> [['saves/TopicExample/LessonExample'], ['saves/Topic/Lesson']]
+        if isinstance(lesson_directories[0],list):
+            lesson_directories = flatten_list(lesson_directories)
         #Step 5: Check if these lesson directories have a valid chunk manifest inside of them
         valid_lesson_directories = [lesson_path for lesson_path in lesson_directories if ManifestHandler.scan_for_manifests(lesson_path)[1]]
 
@@ -443,6 +484,8 @@ class Menu:
         self_check() #Just an alias
     @staticmethod
     def ask_question(path: str) -> bool: #True if they got it correct, False if they didn't.
+        if not QProc.fetch_question(path):
+            raise Exception(f'Question fetch failed, as there is no question at the given path. {path}')
         question,answer = QProc.fetch_question(path)
         print(question)
         print("Please type your response:")
@@ -499,8 +542,12 @@ class Menu:
                 question_list = FFMAN2.scan_for_review(os.path.split(chunk_dir)[0])
                 for question in question_list: #Ask all questions in this chunk, don't stop until they get it all correct at least once.
                     while question_list:
-                        if Menu.ask_question(question):
-                            break
+                        try:
+                            Menu.ask_question(question)
+                        except Exception as e:
+                            pass
+                        finally:
+                            question_list.remove(question)
                 #Now they've answered all of the questions!
                 #So we'll log that the chunk is complete.
                 FFMAN2.log_chunk_completion(chunk_path)
