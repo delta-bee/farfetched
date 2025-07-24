@@ -1,2 +1,2 @@
-LessonExample1 REQUIRES 
-LessonExample2 REQUIRES LessonExample1
+LessonExample REQUIRES 
+LessonExample2 REQUIRES LessonExample

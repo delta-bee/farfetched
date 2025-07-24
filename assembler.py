@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, TypeVar
 normal_cwd = os.getcwd()
 #You guys ever wonder if this will ever actually take off? If it does, I'd be so happy.
 #Maintaining this code might be pain though. I need to write better documentation...
@@ -11,28 +11,80 @@ def strip_path(path: str, list_index: int) -> str:
     :return: The chunk name, without the path. Ex. Chunk1
     """
     return path.split(os.sep)[list_index]
+
+def flatten_list(nested_list: List[List[TypeVar]]) -> List[TypeVar]:
+    """
+    :param nested_list: A list of lists.
+    :return flattened_list: A list of strings, or of lists.:
+
+    Note: If it is given a list that does not contain any lists, it will return the original list.
+    """
+
+    while any(isinstance(item,list) for item in nested_list):
+        flattened_list = []
+        for item in nested_list:
+            if isinstance(item,list):
+                flattened_list.extend(item)
+            else:
+                flattened_list.append(item)
+        nested_list = flattened_list
+    return nested_list
+
+
 def strip_punctuation(string: str) -> str: #Slightly modified version found in FFLIB.py, it allows spaces.
-    discardables = ['\'', '\"', ',', ':', ';', '-', '.','/']
+    discardables = ['\'', '\"', ',', ':', ';', '-', '.','/','!','?']
     for character in discardables:
         string = string.replace(character, '')
     return string
+def if_not_exist_create_it(path: str or tuple[str], *args) -> None:
+    """
+    This function will check if a directory exists. If it doesn't, it will create it.
+    It can be given a string, or a tuple of strings.
+    In the event it is given a tuple, it will join the strings with os.sep.
+    Raises an error if it has something other than a string or tuple of strings.
+    :param path:
+    :param args:
+    :return None:
+    """
+    #This function can be called with if_not_exist_create_it(pathpart1,pathpart2), for the sake of simplifying code outside of this function.
+    #So... we'll handle the args.
+    if args and isinstance(path,tuple):
+        raise TypeError("if_not_exist_create_it: The path parameter cannot be a tuple if additional arguments are given.") #I am NOT handling that kind of crappy input. In fact, if that garbage is passed to this function, something went wrong upstream.
+    elif args:
+        path = os.path.join(path,*args)
+    if not isinstance(path,tuple) and not isinstance(path,str):
+        raise TypeError("if_not_exist_create_it: The path parameter must be a string or a tuple of strings.")
+    elif isinstance(path,tuple):
+        path = os.path.join(*path)
+    if not os.path.exists(path):
+        os.mkdir(path)
+    return None
 def setup_directories(hierarchy: List[List[str]] = [['Topic'], ['Lesson', 'Lesson2'], [['Chunk1', 'Chunk2'], ['Chunk3', 'Chunk4']]]) -> List[List[str]]: #default val for debugging
-    #We'll put this in one big ol try statement. If it fails, I don't want it to make me a half-baked directory tree.
+    """
+    This function will create the directory tree for the user's custom lesson.
+    :param hierarchy:
+    :return: This returns a list of lists. The top level list is the list of lessons, and the second level list is the list of chunks in that lesson.
+
+    In detail, this function will create the following directory structure:
+    Topic contains lesson folders, each with chunk folders.
+
+    When called, it:
+        Checks for a save folder. If it doesn't exist, it creates it.
+        Checks for the topic folder. If it doesn't exist, it creates it.
+
+    """
     chunk_path_list: List[List[str]] = []
     try:
         #Move present working directory to the save folder, that's the only place that this script should be poking around in...
-        if not os.path.exists('saves'):
-            #I'd call on self_check in FFlib, but I want this to be independent of the rest of FarFetched, because FFlib is entering into function cancer territory.
-            os.mkdir('saves')
-        os.chdir('saves')
+        if_not_exist_create_it(normal_cwd,'saves')
         #Create topic directory in the saves folder
         topic = hierarchy[0][0]
-        if not os.path.exists(topic):
-            os.mkdir(topic)
+        if_not_exist_create_it('saves',topic)
         #Create lesson folders and their chunks
         lesson_list = hierarchy[1]
+        print(hierarchy)
         for i,lesson_dir in enumerate(lesson_list): #Look, Mom, I learned a new function!
-            lesson_path = os.path.join(topic,lesson_dir) #topic/lesson_path
+            lesson_path = os.path.join('saves',topic,lesson_dir) #topic/lesson_path
             #Create lesson directories
             if not os.path.exists(lesson_path):
                 os.mkdir(lesson_path)
@@ -40,16 +92,22 @@ def setup_directories(hierarchy: List[List[str]] = [['Topic'], ['Lesson', 'Lesso
             lesson_chunk_list = hierarchy[2][i] #['Chunk1', 'Chunk2']
             for chunk_dir in lesson_chunk_list:
                 chunk_path = os.path.join(topic,lesson_dir,chunk_dir)
-                if not os.path.exists(chunk_path):
-                    os.mkdir(chunk_path)
+                if_not_exist_create_it('saves',chunk_path)
                 chunk_paths_in_lesson.append(chunk_path)
             chunk_path_list.append(chunk_paths_in_lesson)
     except NameError as e:
         print("Oh no. Failed to create directories.",e)
-    os.chdir(normal_cwd)
     return chunk_path_list
 def populate_chunks(chunk_list: List[str]) -> None:
+    """
+    In each chunk directory, we'll create a content.txt file, with contents specified by the user.
+
+    :param chunk_list: A flat list of chunk paths. Ex. ['Topic2/Lesson/Chunk1', 'Topic2/Lesson/Chunk2']
+    :return: None
+    """
     for chunk in chunk_list:
+        if 'saves' not in chunk.split(os.sep):
+            chunk = os.path.join('saves',chunk)
         if os.path.exists(chunk):
             chunk_without_path = os.path.split(chunk)[1]
             print(f"Please now give me the contents of the chunk named \"{chunk_without_path}\". DONE when you're finished providing all of the lines.")
@@ -63,14 +121,28 @@ def populate_chunks(chunk_list: List[str]) -> None:
                     content_input.append(new_input_line)
             #Now we've got their input, we will write it to content.txt
             content_file_path = os.path.join(chunk,'content.txt')
-            with open(content_file_path,'w') as file:
-                as_string = ''
-                for line in content_input:
-                    as_string += line +'\n'
-                file.write(as_string)
     return
+def write_contents_to_drive(list_of_paths: List[str],list_of_contents: List[str]) -> None:
+    '''
+    In each path, we'll write the contents to the file.
+    Each path should correspond to the content of the same index in the list_of_contents list.
+    Both parameters should be lists of strings.
+    If the length of both lists are not equal, this function will raise an error.
+    If there is already a text file at the path, this function will overwrite it.
+    :param list_of_paths:
+    :param list_of_contents:
+    :return None:
+    '''
+    if not len(list_of_paths) == len(list_of_contents):
+        raise ValueError("Write contents to drive: The length of the list of paths and the list of contents must be equal.")
+    for path,content in zip(list_of_paths,list_of_contents):
+        with open(path,'w') as file:
+            file.write(content)
+    return None
 def ask_questions(chunk_list: List[str]) -> None:
     for chunk in chunk_list:
+        if 'saves' not in chunk.split(os.sep):
+            chunk = os.path.join('saves',chunk)
         if os.path.exists(chunk):
             print(f"Please now give me a question for the chunk {chunk}")
             #Previously, we allowed DONE in all cases. Now, we'll only accept all uppercase, because we don't want to prematurely terminate the input
@@ -114,7 +186,6 @@ def lesson_manifest_creator(user_input: List[List[str]]) -> None:
     topic = user_input[0][0] #Yeah, it's List[List[str]]. Weird how I thought that would be more understandable.
     topic_path = os.path.join(normal_cwd,'saves',topic)
     #if not os.path.exists(topic_path):
-    os.chdir(normal_cwd)
     with open(os.path.join(topic_path,'lessonmanifest.txt'),'w') as manifest_file:
         manifest_file.write(manifest_text_file_contents)
     return None
@@ -218,13 +289,14 @@ def main():
     user_inputs.append(chunk_names)
     print("Chunk names complete.")
     print("Please wait while the program attempts to create the directory tree that you've outlined...")
-    chunk_paths = setup_directories(user_inputs)
+    chunk_paths: List[List[str]] = setup_directories(user_inputs)
     for lesson_paths in chunk_paths:
         populate_chunks(lesson_paths)
     for lesson_chunks in chunk_paths:
         ask_questions(lesson_chunks)
     lesson_manifest_creator(user_inputs)
     chunk_manifest_creator(chunk_paths)
+    chunk_paths_flat_list: List[str] = flatten_list(chunk_paths)
     print("Assembly complete. You can now find your new topic in the \"saves\" folder.")
     #Now we've got all of the content. Now we need to ask for the chunk's questions
 if __name__ == '__main__':

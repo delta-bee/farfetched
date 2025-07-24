@@ -1,0 +1,16 @@
+This is a file containing the rules for contributions to this repo.
+
+FarFetched Base (original repo)
+1. A script should just be a bunch of functions, and then a main function doing nothing more than orchestrating them.
+Keep the code modular.
+2. Keep functions small. Seriously. Especially ones that write to the drive.
+3. Do not EVER require root/admin. This code isn't well-tested enough to handle that power.
+4. For super complex functions, write tests. If you can't, ask another contributor to help you.
+5. If you're a collaborator, do not push to stable. I should be the only one doing that, so that the code can be reviewed and tested.
+6. Contributors maintain copyright over their contributions, but agree to license it under GPL-3, with the rest of the code.
+
+FarFetched Lessons (one containing lessons)
+1. Do not commit garbage. Please, make sure you're making quality content. Let's not misinform people on what a litote is.
+2. AI generated content is not quality content.
+3. Don't commit anything that would violate someone's intellectual property rights.
+4. If you believe that someone has posted a violation of your copyright on this repo, please contact admin@o8.lol or @sl8:matrix.org on the matrix federation.
