@@ -5,7 +5,7 @@ from datetime import datetime
 
 from assembler import strip_punctuation
 
-required_files = ['main.py','fflib.py','data.db','sm2.py']
+required_files = ['main.py','fflib.py','data.db','sm2.py','assembler.py','LICENSE']
 required_directories = ['saves']
 def on_error(severity: str or int='1', error_message: str="No error message was provided") -> None:
     #For severity, if it's 0, it won't stop the game, if it's 1, it will stop the game.
@@ -40,6 +40,11 @@ def flatten_list(nested_list: List[List[TypeVar]]) -> List[TypeVar]:
     #:shrug:
     return nested_list
 def get_immediate_child_directories(path: str) -> list[str]:
+    """
+    Given a string representing a path, this function will return a list of all of the immediate child directories.
+    :param path: A string representing a path.
+    :return: A list of strings, representing the paths of the immediate child directories.:
+    """
     return [os.path.join(path,directory) for directory in os.listdir(path) if os.path.isdir(os.path.join(path, directory))]
 
 def strip_path(path: str) -> str:
@@ -63,10 +68,14 @@ def make_boolean(string: str) -> bool or str:  # Converts string literals to boo
         on_error('1', 'make_boolean was given an invalid input.')
         sys.exit()
 def menu(*args) -> str:
-    #Example input: "Eat the Burger","eat","Don't eat the burger","nah"
-    #It will display the user "Eat the Burger" and then "Don't eat the burger"
-    #And then this function will return with either "eat" or "nah" depending on what the user selected.
-
+    """
+    This function will display a menu, and then return the user's selection.
+    Example: menu("Eat the Burger","eat","Don't eat the burger","nah")
+    If the user selects "Eat the Burger", it will return "eat"
+    Input must be an even number of strings.
+    :param args: Even number of strings.
+    :return str: The user's selection.
+    """
     #This crates a list "argli" that stores all the arguments given to the function.
     argli = list(args)
     #We make sure that we have an even number of arguments, if not, we crash the program.
@@ -193,30 +202,26 @@ class QProc:
             return True
         else:
             return False
+def menu_translator(options: List[str]) -> str:
+    """
+    This function will translate a list of strings a list of options into a format that menu() understands.
+    It will then call menu() with the options.
+    It will return the result of menu(), which is one of the strings that have been provided in options.
+    :param options:  A list of strings.
+    :return: The string that was chosen by the user.
+    """
+    doubled_list = options*2
+    return menu(*doubled_list)
 def topic_list() -> str:
+    """
+    This function will return a topic path decided by the user.
+    :return: The relative file path to the chosen topic.
+    """
+    #Holy smokes, this function was a security hazard AND garbage code before I cut out all of the trash.
+    #Writing this program really has made me level up as a programmer.
     topic_directory_list = os.listdir('saves')
-    new_topic_list = [] #All of this is just to make the menu command.
-    for x in topic_directory_list:
-        new_topic_list.append(x)
-        new_topic_list.append(x)
-    #menu("topic1","topic1","topic2","topic2")
-    param_head = "menu(\""
-    param_body = '\",\"'.join(new_topic_list)
-    param_tail = "\")"
-    complete_command = param_head + param_body + param_tail
-    #Everything we've done in those lines above is set up to execute a menu command listing all of the topics.
-    #Now, we'll see which one the users picks.
-    try:
-        choice = eval(complete_command) #Scary!
-    except Exception as e:
-        print(complete_command)
-        print(f"An error occurred: {e}")
-        on_error('1','topic_list has suffered an error, now exiting.')
-        sys.exit()
-    topic_path_head = 'saves/'
-    return topic_path_head +str(choice) #This program speaks in paths. Therefore, we will return the relative path, instead of merely the directory name.
-    #This is a terrible way to do it, but at least we can list out the topics now.
-    #Step 2: Have something on the other end of this
+    choice = menu_translator(topic_directory_list)
+    return os.path.join('saves',choice)
 class FFMAN2: #Handles the translation between the "database" and the rest of the program.
     @staticmethod
     def create_database() -> None:
@@ -467,7 +472,7 @@ class Menu:
 
     @staticmethod
     def main_menu() -> str:
-        choice = menu("Learn a lesson","learn_lesson","Make new lesson","create_new_lesson","Answer Questions", "answer_questions", "Perform self-check", 'self_check',"Exit the program", 'exit')
+        choice = menu("Learn a lesson","learn_lesson","Manage knowledge","manage_knowledge","Answer Questions", "answer_questions", "Perform self-check", 'self_check',"Exit the program", 'exit')
         if choice == 'answer_questions':
             questions_to_ask = Menu.answer_questions('all')
             for question in questions_to_ask:
@@ -481,7 +486,7 @@ class Menu:
         print("Exiting program...")
         exit()
     @staticmethod
-    def create_new_lesson():
+    def manage_knowledge():
         assembler.main()
     @staticmethod
     def self_check():

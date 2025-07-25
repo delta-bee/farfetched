@@ -1,10 +1,17 @@
 import os
-import sqlite3
-from typing import List, Union, Tuple, TypeVar
+from typing import List, Union, Tuple, TypeVar, Optional
 normal_cwd = os.getcwd()
 #You guys ever wonder if this will ever actually take off? If it does, I'd be so happy.
 #Maintaining this code might be pain though. I need to write better documentation...
 #I HATE YOU ASSEMBLER.PY, YOU HYDRA OF BUGS.
+def get_immediate_child_directories(path: str) -> list[str]:
+    """
+    Given a string representing a path, this function will return a list of all of the immediate child directories.
+    :param path: A string representing a path.
+    :return: A list of strings, representing the paths of the immediate child directories.:
+    """
+    return [os.path.join(path,directory) for directory in os.listdir(path) if os.path.isdir(os.path.join(path, directory))]
+
 def strip_path(path: str, list_index: int) -> str:
     """
     :param path: A string representing a path. Ex. Topic2/Lesson/Chunk1
@@ -138,7 +145,7 @@ def populate_chunks(chunk_list: List[str]) -> None:
     write_contents_to_drive(list_of_content_file_paths,list_of_content_file_contents)
     return
 def write_contents_to_drive(list_of_paths: List[str],list_of_contents: List[str]) -> None:
-    '''
+    """
     In each path, we'll write the contents to the file.
     Each path should correspond to the content of the same index in the list_of_contents list.
     Both parameters should be lists of strings.
@@ -147,7 +154,7 @@ def write_contents_to_drive(list_of_paths: List[str],list_of_contents: List[str]
     :param list_of_paths:
     :param list_of_contents:
     :return None:
-    '''
+    """
     if not len(list_of_paths) == len(list_of_contents):
         raise ValueError("Write contents to drive: The length of the list of paths and the list of contents must be equal.")
     for path,content in zip(list_of_paths,list_of_contents):
@@ -245,18 +252,16 @@ def chunk_manifest_creator(lesson_chunks:List[List[str]]) -> None:
         file_target = os.path.join(normal_cwd,'saves',topic_name,lesson_name,'chunkmanifest.txt')
         with open(file_target,'w') as manifest_file:
             manifest_file.write(manifest_content)
-def main():
+def orchestrate_creation() -> None:
+    """
+    This function will orchestrate the creation of the directory tree and content files.
+    It used to be the main function, but I've split it up into smaller functions for easier debugging.
+    Good luck debugging it. I'm sorry, but I didn't write the easiest to maintain code...
+    :return:
+    """
     print("Welcome to FarFetched's Assembler!")
     print("This program will help you assemble your own custom lessons for FarFetched.")
     print("Please note that this program is still in development. It may not work as intended.")
-    #OH NO. It's going to be a nightmare allowing editing functionality.
-    # Step 1, check for all database files.
-    # dir_contents = os.listdir()
-    # db_files = [file for file in dir_contents if '.db' in file and file != 'data.db']
-    # # Step 2, if there are database files (from previous assembly attempts), ask user if they wish to load them.
-    # if db_files:
-    #     print("Possible assembler database detected. Would you like to open it?")
-    #     #Work on this later.
     user_inputs = get_user_input()
     print("Chunk names complete.")
     print("Please wait while the program attempts to create the directory tree that you've outlined...")
@@ -316,5 +321,147 @@ def get_user_input() -> List[List[str]]:
         chunk_names.append(chunk_list_in_lesson)
     user_inputs.append(chunk_names)
     return user_inputs
+def discover_topics():
+    pass
+def menu(*args) -> str:
+    """
+    This function will display a menu, and then return the user's selection.
+    Example: menu("Eat the Burger","eat","Don't eat the burger","nah")
+    If the user selects "Eat the Burger", it will return "eat"
+    Input must be an even number of strings.
+    :param args:
+    :return:
+    """
+    #This crates a list "argli" that stores all the arguments given to the function.
+    argli = list(args)
+    #We make sure that we have an even number of arguments, if not, we crash the program.
+    if (len(argli)%2) == 1:
+        raise ValueError("Menu: Odd number of arguments were provided.")
+
+    #The even arguments are added to displaylist
+    displaylist = [argli[i] for i in range(len(argli)) if i%2 == 0]
+    #And the odd ones are added to varlist
+    varlist = [argli[i] for i in range(len(argli)) if i%2 == 1]
+
+    #This will make something like:
+    '''
+    [1]: Eat the Burger
+    [2]: Don't eat the burger
+    '''
+    for i in range(len(displaylist)):
+        bracket_thing = "[" + str(i+1) + "]:" #Example: [2]:
+        print(bracket_thing,displaylist[i])
+
+
+    # This list is for which numbers we should accept as an input
+    valid_numbers = [str(x + 1) for x in range(len(displaylist))] #Example: [1, 2]
+
+    #This asks the user for their selection, and will loop again if they provide an invalid choice
+    while True:
+        selection = str(input())
+        if selection in valid_numbers:
+            break
+        else:
+            print("Menu: Invalid selection. Try again.")
+
+    #Now we have the user's selection, and we need to fetch from varlist the corresponding thing to return.
+    selection = int(selection)- 1 #Lists start at 0, but the menu we displayed starts at 1, so we need to correct for this.
+    return varlist[selection]
+def menu_translator(options: List[str]) -> str:
+    """
+    This function will translate a list of strings a list of options into a format that menu() understands.
+    It will then call menu() with the options.
+    It will return the result of menu(), which is one of the strings that have been provided in options.
+    :param options:  A list of strings.
+    :return: The string that was chosen by the user.
+    """
+    doubled_list = options*2
+    return menu(*doubled_list)
+def fetch_topics() -> dict[str:str] or None:
+    """
+    This function will fetch all of the topics that have been created.
+    It returns a dictionary where the keys are the display names, and the values are the paths.
+    The display name is merely the name of the topic folder.
+    :return: Dictionary of topic names and topic paths, with display names as keys and paths as values.
+
+    Behavior:
+    Gets the list of topic paths from get_immediate_child_directories pointed at the saves folder.
+    Does the save thing, but trims off the rest of the path, to get the directory name.
+    Zips these two lists into a dictionary, and returns it.
+    """
+    display_topic_list = [os.path.split(topic_path)[1] for topic_path in get_immediate_child_directories(os.path.join(normal_cwd, 'saves'))]
+    path_topic_list = [topic_path for topic_path in get_immediate_child_directories(os.path.join(normal_cwd, 'saves'))]
+    display_and_path_dict = dict(zip(display_topic_list, path_topic_list))
+    return display_and_path_dict
+def fetch_user_desired_topic_path() -> Optional[str]:
+    """
+    This function will display a menu that allows the user to edit a topic.
+    It returns a path, a string, that corresponds to the path of the topic that the user has chosen.
+    :return: A string that corresponds to the path of the topic that the user has chosen, or None if the user has not created any topics yet.
+    Behavior:
+    Calls fetch_topics() to get a dictionary of topic names and topic paths.
+    If the dictionary is empty, it will return None.
+    Otherwise, it will display a menu of topic names, and then return the path of the topic that the user has chosen.
+    """
+    topic_and_path_dict = fetch_topics()
+    if not topic_and_path_dict:
+        return None
+    display_topic_list = list(topic_and_path_dict.keys())
+    print("Which topic would you like to edit?")
+    user_topic_name_choice = menu_translator(display_topic_list)
+    user_topic_path_choice = topic_and_path_dict.get(user_topic_name_choice)
+    if user_topic_name_choice not in display_topic_list or user_topic_path_choice not in topic_and_path_dict.values():
+        raise ValueError("Downstream error in fetch_user_desired_topic_path: menu_translator returned a value that was not in the topic_and_path_dict. This should never happen. Please report this error to the developer.")
+    return user_topic_path_choice
+def ask_user_edit_type() -> List[str]:
+    """
+    This function will ask the user what type of edit they want to make.
+    It returns a string that corresponds to the type of edit that the user has chosen.
+    :return: A list of two strings, where the first string is the type of edit, and the second string is the target type.
+        Valid types of edit: ["add_new","edit_existing","delete_existing","rename_existing"]
+        Valid target types: ["topic","lesson","chunk"]
+    Behavior:
+    Defines the display version of the operation options for the menu, and their corresponding machine names.
+    Uses menu_translator() to display the menu with the display options, and then does the same with the target type.
+    """
+    #Get operation type
+    print("What type of edit would you like to make?")
+    operation_menu_options = ["add_new","edit_existing","delete_existing","rename_existing"]
+    operation_menu_display_options = ["Add new", "Edit existing", "Delete existing", "Rename existing"]
+    display_and_path_dict = dict(zip(operation_menu_display_options, operation_menu_options))
+    user_operation_edit_type_choice = menu_translator(operation_menu_display_options)
+    operation_type = display_and_path_dict.get(user_operation_edit_type_choice)
+
+    print("What type of thing would you like to edit?")
+    #Now, we get the target of their operation (Chunk, Lesson, Topic)
+    target_menu_options = ["topic","lesson","chunk"]
+    target_menu_display_options = ["Topic", "Lesson", "Chunk"]
+    display_and_path_dict = dict(zip(target_menu_display_options, target_menu_options))
+    user_target_edit_type_choice = menu_translator(target_menu_display_options)
+    target_type = display_and_path_dict.get(user_target_edit_type_choice)
+    return [operation_type, target_type]
+def editor():
+    print("Welcome to FarFetched's Editor!")
+    print("Fetching topics...")
+    user_desired_topic_path = fetch_user_desired_topic_path()
+    if not user_desired_topic_path:
+        print("Sorry, you don't seem to have any topics yet.")
+        print("Make some with create new topic.")
+        print("Editor will now exit.")
+        return
+    print(user_desired_topic_path)
+    return
+
+def main():
+    print("Welcome to FarFetched's Lesson Manager.")
+    editor()
+    while True:
+        menu("Create a new topic","new_topic","Edit topic","editor","Exit","exit")
+        if menu() == "new_topic":
+            orchestrate_creation()
+        elif menu() == "exit":
+            break
+        elif menu() == "editor":
+            pass
 if __name__ == '__main__':
     main()
