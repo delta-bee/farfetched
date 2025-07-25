@@ -251,57 +251,13 @@ def main():
     print("Please note that this program is still in development. It may not work as intended.")
     #OH NO. It's going to be a nightmare allowing editing functionality.
     # Step 1, check for all database files.
-    dir_contents = os.listdir()
-    db_files = [file for file in dir_contents if '.db' in file and file != 'data.db']
-    # Step 2, if there are database files (from previous assembly attempts), ask user if they wish to load them.
-    if db_files:
-        print("Possible assembler database detected. Would you like to open it?")
-        #Work on this later.
-
-    #Now we'll ask the user about the layout of their lesson.
-    user_inputs = [] #But we'll store what the user inputted in this list, so that the user can change their mind later.
-    print("What is the name of your topic? Ex. Introduction to Python Programming")
-    while True:
-        topic_name = input()
-        if not topic_name == strip_punctuation(topic_name):
-            topic_name = strip_punctuation(topic_name)
-            print(f"Topic name cannot contain some punctuation. Your new topic name is {topic_name}.")
-            user_inputs.append([topic_name])
-            break
-        if os.path.exists(os.path.join('saves',topic_name)):
-            print(f"Topic name \"{topic_name}\" already exists. Please choose a different name.")
-        else:
-            user_inputs.append([topic_name])
-            break
-    #We need to keep directory commands and user inputs on the same index.
-
-    #Next step: Get all of the lesson directories.
-    print("Now we need all of the lesson names for your topic. Ex. Datatype: Lists")
-    print("Put in a lesson name, and then hit ENTER. Once you're done entering lesson names, type \"DONE\" .")
-    lesson_names = []
-    while True:
-        user_input = input()
-        if user_input.upper() == "DONE" and lesson_names:
-            break
-        else:
-            lesson_names.append(user_input)
-    user_inputs.append(lesson_names)
-    print("Lesson names complete.")
-
-    #Now, for each lesson, we'll ask for each of the chunks in the lesson.
-    chunk_names: List[List[str]] = []
-    for lesson in lesson_names:
-        chunk_list_in_lesson = []
-        print(f'For the lesson \"{lesson}\". please list all chunks. Ex. List Indexing')
-        print("Again, ENTER to submit one chunk name, DONE when you're finished.")
-        while True:
-            user_input = input()
-            if user_input.upper() == "DONE" and chunk_list_in_lesson: #Do not allow the user to input no lessons. It'll crash it.
-                break
-            else:
-                chunk_list_in_lesson.append(user_input)
-        chunk_names.append(chunk_list_in_lesson)
-    user_inputs.append(chunk_names)
+    # dir_contents = os.listdir()
+    # db_files = [file for file in dir_contents if '.db' in file and file != 'data.db']
+    # # Step 2, if there are database files (from previous assembly attempts), ask user if they wish to load them.
+    # if db_files:
+    #     print("Possible assembler database detected. Would you like to open it?")
+    #     #Work on this later.
+    user_inputs = get_user_input()
     print("Chunk names complete.")
     print("Please wait while the program attempts to create the directory tree that you've outlined...")
     chunk_paths: List[List[str]] = setup_directories(user_inputs)
@@ -314,5 +270,51 @@ def main():
     chunk_paths_flat_list: List[str] = flatten_list(chunk_paths)
     print("Assembly complete. You can now find your new topic in the \"saves\" folder.")
     #Now we've got all of the content. Now we need to ask for the chunk's questions
+def get_user_input() -> List[List[str]]:
+    # Now we'll ask the user about the layout of their lesson.
+    user_inputs = []  # But we'll store what the user inputted in this list, so that the user can change their mind later.
+    print("What is the name of your topic? Ex. Introduction to Python Programming")
+    while True:
+        topic_name = input()
+        if not topic_name == strip_punctuation(topic_name):
+            topic_name = strip_punctuation(topic_name)
+            print(f"Topic name cannot contain some punctuation. Your new topic name is {topic_name}.")
+            user_inputs.append([topic_name])
+            break
+        if os.path.exists(os.path.join('saves', topic_name)):
+            print(f"Topic name \"{topic_name}\" already exists. Please choose a different name.")
+        else:
+            user_inputs.append([topic_name])
+            break
+    # We need to keep directory commands and user inputs on the same index.
+
+    # Next step: Get all of the lesson directories.
+    print("Now we need all of the lesson names for your topic. Ex. Datatype: Lists")
+    print("Put in a lesson name, and then hit ENTER. Once you're done entering lesson names, type \"DONE\" .")
+    lesson_names = []
+    while True:
+        user_input = input()
+        if user_input.upper() == "DONE" and lesson_names:
+            break
+        else:
+            lesson_names.append(user_input)
+    user_inputs.append(lesson_names)
+    print("Lesson names complete.")
+
+    # Now, for each lesson, we'll ask for each of the chunks in the lesson.
+    chunk_names: List[List[str]] = []
+    for lesson in lesson_names:
+        chunk_list_in_lesson = []
+        print(f'For the lesson \"{lesson}\". please list all chunks. Ex. List Indexing')
+        print("Again, ENTER to submit one chunk name, DONE when you're finished.")
+        while True:
+            user_input = input()
+            if user_input.upper() == "DONE" and chunk_list_in_lesson:  # Do not allow the user to input no lessons. It'll crash it.
+                break
+            else:
+                chunk_list_in_lesson.append(user_input)
+        chunk_names.append(chunk_list_in_lesson)
+    user_inputs.append(chunk_names)
+    return user_inputs
 if __name__ == '__main__':
     main()

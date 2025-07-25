@@ -467,7 +467,7 @@ class Menu:
 
     @staticmethod
     def main_menu() -> str:
-        choice = menu("Learn a lesson","learn_lesson","Make new lesson","create_new_lesson","Answer Questions", "answer_questions", "Perform self-check", 'self_check')
+        choice = menu("Learn a lesson","learn_lesson","Make new lesson","create_new_lesson","Answer Questions", "answer_questions", "Perform self-check", 'self_check',"Exit the program", 'exit')
         if choice == 'answer_questions':
             questions_to_ask = Menu.answer_questions('all')
             for question in questions_to_ask:
@@ -476,6 +476,10 @@ class Menu:
         else:
             eval('Menu.'+choice+'()')
         return 'Menu.main_menu()'
+    @staticmethod
+    def exit():
+        print("Exiting program...")
+        exit()
     @staticmethod
     def create_new_lesson():
         assembler.main()
@@ -525,6 +529,12 @@ class Menu:
 
     @staticmethod
     def learn_lesson() -> bool or str:
+        """
+        It has ManifestHandler get available chunks, checks if it's pending with check if completed,
+        has Menu display the lesson, and then scans for questions, and has ask_question ask the questions.
+        In the event that the questions it discovers are invalid, it will discard the error and remove the question from the list.
+        :return:
+        """
         print("Alright! Time to learn something new.")
         available_chunk_manifests = ManifestHandler.get_available_chunks()
         def has_content_file(chunk_directory:str) -> bool or str:
