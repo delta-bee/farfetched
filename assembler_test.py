@@ -71,5 +71,9 @@ class TestIfNotExistCreateIt(unittest.TestCase):
         mock_exists.return_value = True
         if_not_exist_create_it('test_dir')
         mock_mkdir.assert_not_called()
+class TestCheckIfPathValid(unittest.TestCase):
+    def test_valid_path(self):
+        self.assertTrue(is_path_valid('test_dir'))
+    #If anyone has ideas for testing the false stuff cross-platform, let me know. For now, this'll do.
 if __name__ == '__main__':
     unittest.main()

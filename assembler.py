@@ -1,9 +1,27 @@
 import os
 from typing import List, Union, Tuple, TypeVar, Optional
+from pathlib import Path
+
 normal_cwd = os.getcwd()
 #You guys ever wonder if this will ever actually take off? If it does, I'd be so happy.
 #Maintaining this code might be pain though. I need to write better documentation...
 #I HATE YOU ASSEMBLER.PY, YOU HYDRA OF BUGS.
+def is_path_valid(possible_path: str) -> bool:
+    """
+    This function will check if a string is a valid path.
+    Not that it exists, but that if it can exist at all.
+    This is mostly to check that nobody's naming a file "CON" or something that will blow up the assembler.
+    :param possible_path: The path, a string, to be checked.
+    :return: A boolean, indicating whether the path is valid.
+    """
+    path = Path(possible_path)
+    try:
+        #This won't care if the file exists or not, but it'll error out if the name isn't allowed on the filesystem.
+        path.resolve(strict=False)
+    except Exception:
+        return False
+    else:
+        return True
 def get_immediate_child_directories(path: str) -> list[str]:
     """
     Given a string representing a path, this function will return a list of all of the immediate child directories.
@@ -98,7 +116,6 @@ def setup_directories(hierarchy: List[List[str]] = [['Topic'], ['Lesson', 'Lesso
         if_not_exist_create_it('saves',topic)
         #Create lesson folders and their chunks
         lesson_list = hierarchy[1]
-        print(hierarchy)
         for i,lesson_dir in enumerate(lesson_list): #Look, Mom, I learned a new function!
             lesson_path = os.path.join('saves',topic,lesson_dir) #topic/lesson_path
             #Create lesson directories
@@ -375,93 +392,259 @@ def menu_translator(options: List[str]) -> str:
     :param options:  A list of strings.
     :return: The string that was chosen by the user.
     """
-    doubled_list = options*2
+    doubled_list = []
+    for item in options:
+        doubled_list.append(item)
+        doubled_list.append(item)
+        #I know this isn't the optimized way, but it's the readable way, and in a world where this script's basically running instantly anyway, I'd take this option.
     return menu(*doubled_list)
-def fetch_topics() -> dict[str:str] or None:
-    """
-    This function will fetch all of the topics that have been created.
-    It returns a dictionary where the keys are the display names, and the values are the paths.
-    The display name is merely the name of the topic folder.
-    :return: Dictionary of topic names and topic paths, with display names as keys and paths as values.
+class AddNew:
+    @staticmethod
+    def add_topic():
+        print("If you want to create a topic with lessons and chunks in it, you should probably use the create a new topic option in the main menu.")
+        print("What is the name of your new topic?")
+        topic_name = input()
+        target_path = os.path.join(normal_cwd, 'saves', topic_name)
+        if os.path.exists(target_path):
+            print(f"Topic name \"{topic_name}\" already exists.")
+            return
+        else:
+            os.mkdir(target_path)
+            print(f"Topic \"{topic_name}\" created.")
+            return
 
-    Behavior:
-    Gets the list of topic paths from get_immediate_child_directories pointed at the saves folder.
-    Does the save thing, but trims off the rest of the path, to get the directory name.
-    Zips these two lists into a dictionary, and returns it.
-    """
-    display_topic_list = [os.path.split(topic_path)[1] for topic_path in get_immediate_child_directories(os.path.join(normal_cwd, 'saves'))]
-    path_topic_list = [topic_path for topic_path in get_immediate_child_directories(os.path.join(normal_cwd, 'saves'))]
-    display_and_path_dict = dict(zip(display_topic_list, path_topic_list))
-    return display_and_path_dict
-def fetch_user_desired_topic_path() -> Optional[str]:
-    """
-    This function will display a menu that allows the user to edit a topic.
-    It returns a path, a string, that corresponds to the path of the topic that the user has chosen.
-    :return: A string that corresponds to the path of the topic that the user has chosen, or None if the user has not created any topics yet.
-    Behavior:
-    Calls fetch_topics() to get a dictionary of topic names and topic paths.
-    If the dictionary is empty, it will return None.
-    Otherwise, it will display a menu of topic names, and then return the path of the topic that the user has chosen.
-    """
-    topic_and_path_dict = fetch_topics()
-    if not topic_and_path_dict:
-        return None
-    display_topic_list = list(topic_and_path_dict.keys())
-    print("Which topic would you like to edit?")
-    user_topic_name_choice = menu_translator(display_topic_list)
-    user_topic_path_choice = topic_and_path_dict.get(user_topic_name_choice)
-    if user_topic_name_choice not in display_topic_list or user_topic_path_choice not in topic_and_path_dict.values():
-        raise ValueError("Downstream error in fetch_user_desired_topic_path: menu_translator returned a value that was not in the topic_and_path_dict. This should never happen. Please report this error to the developer.")
-    return user_topic_path_choice
-def ask_user_edit_type() -> List[str]:
-    """
-    This function will ask the user what type of edit they want to make.
-    It returns a string that corresponds to the type of edit that the user has chosen.
-    :return: A list of two strings, where the first string is the type of edit, and the second string is the target type.
-        Valid types of edit: ["add_new","edit_existing","delete_existing","rename_existing"]
-        Valid target types: ["topic","lesson","chunk"]
-    Behavior:
-    Defines the display version of the operation options for the menu, and their corresponding machine names.
-    Uses menu_translator() to display the menu with the display options, and then does the same with the target type.
-    """
-    #Get operation type
-    print("What type of edit would you like to make?")
-    operation_menu_options = ["add_new","edit_existing","delete_existing","rename_existing"]
-    operation_menu_display_options = ["Add new", "Edit existing", "Delete existing", "Rename existing"]
-    display_and_path_dict = dict(zip(operation_menu_display_options, operation_menu_options))
-    user_operation_edit_type_choice = menu_translator(operation_menu_display_options)
-    operation_type = display_and_path_dict.get(user_operation_edit_type_choice)
+    @staticmethod
+    def add_lesson():
+        print("What topic should this lesson belong to?")
+        topic_path = Editor.fetch_user_desired_topic_path()
+        if not topic_path:
+            raise Exception("Error in add_lesson: topic_path was None. This should never happen. Please report this error to the developer.")
+        print(f"Topic path: {topic_path}")
+        lesson_name = input("What is the name of your new lesson?")
+        target_path = os.path.join(topic_path, lesson_name)
 
-    print("What type of thing would you like to edit?")
-    #Now, we get the target of their operation (Chunk, Lesson, Topic)
-    target_menu_options = ["topic","lesson","chunk"]
-    target_menu_display_options = ["Topic", "Lesson", "Chunk"]
-    display_and_path_dict = dict(zip(target_menu_display_options, target_menu_options))
-    user_target_edit_type_choice = menu_translator(target_menu_display_options)
-    target_type = display_and_path_dict.get(user_target_edit_type_choice)
-    return [operation_type, target_type]
-def editor():
-    print("Welcome to FarFetched's Editor!")
-    print("Fetching topics...")
-    user_desired_topic_path = fetch_user_desired_topic_path()
-    if not user_desired_topic_path:
-        print("Sorry, you don't seem to have any topics yet.")
-        print("Make some with create new topic.")
-        print("Editor will now exit.")
+        if os.path.exists(target_path):
+            print(f"Lesson name \"{lesson_name}\" already exists.")
+            return
+        else:
+            os.mkdir(target_path)
+            print(f"Lesson \"{lesson_name}\" created.")
+            return
+
+    @staticmethod
+    def add_chunk():
+        print("Please pick a topic for your new chunk to be in, and also the lesson it should be in.")
+        chunk_lesson = Editor.fetch_user_desired_lesson_path()
+        if not chunk_lesson:
+            raise Exception("Error in add_chunk: chunk_lesson was None. This should never happen. Please report this error to the developer.")
+        print("Now, what is the name of your new chunk?")
+        chunk_potential_path = os.path.join(chunk_lesson, input())
+        if not is_path_valid(chunk_potential_path):
+            print(f"Chunk name \"{chunk_potential_path}\" is not valid.")
+            return
+        elif os.path.exists(chunk_potential_path):
+            print(f"Chunk name \"{chunk_potential_path}\" already exists.")
+        #OK, we've passed the integrity checks. FINALLY, we can do something useful.
+        if_not_exist_create_it(chunk_potential_path)
+        populate_chunks([chunk_potential_path])
+        print("Success! Chunk created.")
         return
-    print(user_desired_topic_path)
-    return
+
+
+    @staticmethod
+    def add_question():
+        pass
+        #TODO: Add question feature
+
+    @staticmethod
+    def add_new(target_type: str):
+        """
+        This function will add a new topic, lesson, or chunk.
+        :param target_type: A string that corresponds to the type of thing that the user wants to add.
+        """
+        if target_type not in Editor.target_options:
+            raise Exception("Downstream error in add_new: target_type was not in Editor.target_options. This should never happen. Please report this error to the developer.")
+        if_not_exist_create_it('saves')
+        if target_type == "topic":
+            return AddNew.add_topic()
+        elif target_type == "lesson":
+            return AddNew.add_lesson()
+        elif target_type == "chunk":
+            return AddNew.add_chunk()
+        elif target_type == "question":
+            pass
+            return None
+        else:
+            raise ValueError("Unknown operation type. This should never happen. Please report this error to the developer.")
+class Editor:
+    target_options = ["topic", "lesson", "chunk","question"]
+    target_display_options = ["Topic", "Lesson", "Chunk","Chunk Question"]
+    operation_options = ["add_new", "edit_existing", "delete_existing", "rename_existing"]
+    operation_display_options = ["Add new", "Edit existing", "Delete existing", "Rename existing"]
+    @staticmethod
+    def fetch_topics() -> Optional[dict[str:str]]:
+        """
+        This function will fetch all of the topics that have been created.
+        It returns a dictionary where the keys are the display names, and the values are the paths.
+        The display name is merely the name of the topic folder.
+        :return: Dictionary of topic names and topic paths, with display names as keys and paths as values.
+
+        Behavior:
+        Gets the list of topic paths from get_immediate_child_directories pointed at the saves folder.
+        Does the save thing, but trims off the rest of the path, to get the directory name.
+        Zips these two lists into a dictionary, and returns it.
+        """
+        display_topic_list = [os.path.split(topic_path)[1] for topic_path in get_immediate_child_directories(os.path.join(normal_cwd, 'saves'))]
+        path_topic_list = [topic_path for topic_path in get_immediate_child_directories(os.path.join(normal_cwd, 'saves'))]
+        display_and_path_dict = dict(zip(display_topic_list, path_topic_list))
+        return display_and_path_dict
+
+    @staticmethod
+    def fetch_lessons(topic_name: str) -> Optional[dict[str:str]]:
+        """
+        This function will fetch all of the lessons that have been created for a given topic.
+        It will return a dictionary where the keys are the display names, and the values are the paths.
+        :param topic_name: The name of the topic that you want to fetch lessons for. This should not be a path, instead, it should be the name of the topic folder.
+        Topic folder needs to be in the saves folder.
+        :return: Dictionary of lesson names and lesson paths, with display names as keys and paths as values.
+
+        Behavior: The same thing as fetch_topics(), but modified for lessons.
+        """
+        if not os.path.exists(os.path.join(normal_cwd, 'saves', topic_name)):
+            return None
+        topic_full_path = os.path.join(normal_cwd, 'saves', topic_name)
+        topic_subdirectories = get_immediate_child_directories(topic_full_path)
+        if not topic_subdirectories:
+            return None #I really hope the upstream functions won't detonate when seeing this...
+        display_lesson_list = [os.path.split(lesson_path)[1] for lesson_path in topic_subdirectories]
+        path_topic_list = [lesson_path for lesson_path in get_immediate_child_directories(os.path.join(normal_cwd, 'saves',topic_name))]
+        if not display_lesson_list or not path_topic_list:
+            raise Exception("Error in fetch_lessons: display_lesson_list or path_topic_list was empty. This should never happen. Please report this error to the developer.")
+        display_and_path_dict = dict(zip(display_lesson_list, path_topic_list))
+        return display_and_path_dict
+
+    @staticmethod
+    def fetch_user_desired_topic_path() -> Optional[str]:
+        """
+        This function will display a menu that allows the user to select a topic.
+        It returns a string, that corresponds to the path of the topic that the user has chosen.
+        :return: A string that corresponds to the path of the topic that the user has chosen, or None if the user has not created any topics yet.
+        Behavior:
+        Calls fetch_topics() to get a dictionary of topic names and topic paths.
+        If the dictionary is empty, it will return None.
+        Otherwise, it will display a menu of topic names, and then return the path of the topic that the user has chosen.
+        """
+        topic_and_path_dict = Editor.fetch_topics()
+        if not bool(topic_and_path_dict): #Using if not causes it to return true for some reason.
+            raise Exception("Error when attempting to fetch user desired topic path: topic_and_path_dict was empty. This should never happen. Please report this error to the developer.")
+        display_topic_list = list(topic_and_path_dict.keys())
+        user_topic_name_choice = menu_translator(display_topic_list)
+        user_topic_path_choice = topic_and_path_dict.get(user_topic_name_choice)
+        if user_topic_name_choice not in display_topic_list or user_topic_path_choice not in topic_and_path_dict.values():
+            raise ValueError("Downstream error in fetch_user_desired_topic_path: menu_translator returned a value that was not in the topic_and_path_dict. This should never happen. Please report this error to the developer.")
+        return user_topic_path_choice
+
+    @staticmethod
+    def fetch_user_desired_lesson_path() -> Optional[str]:
+        """
+        This function will display a menu that allows the user to edit a topic.
+        It returns a path, a string, that corresponds to the path of the topic that the user has chosen.
+        :return: A string that corresponds to the path of the topic that the user has chosen, or None if the user has not created any topics yet.
+        Behavior:
+        Calls fetch_topics() to get a dictionary of topic names and topic paths.
+        If the dictionary is empty, it will return None.
+        Otherwise, it will display a menu of topic names, and then return the path of the topic that the user has chosen.
+        """
+        topic_to_scan = Editor.fetch_user_desired_topic_path()
+        if not topic_to_scan:
+            raise ValueError("In fetch_user_desired_lesson_path, topic_to_scan was None. This should never happen. Please report this error to the developer.")
+        lesson_list = Editor.fetch_lessons(topic_to_scan)
+        if not lesson_list:
+            return None
+        display_lesson_list = list(lesson_list.keys())
+        print(f'Please select a lesson from the following list:')
+        user_lesson_name_choice = menu_translator(display_lesson_list)
+        user_lesson_path_choice = lesson_list.get(user_lesson_name_choice)
+        if user_lesson_name_choice not in display_lesson_list or user_lesson_path_choice not in lesson_list.values():
+            raise ValueError("Error in fetch_user_desired_lesson_path: menu_translator returned a value that was not in the lesson_list. This should never happen. Please report this error to the developer.")
+        return user_lesson_path_choice
+
+
+    def ask_user_edit_type(self) -> List[str]:
+        """
+        This function will ask the user what type of edit they want to make.
+        It returns a string that corresponds to the type of edit that the user has chosen.
+        :return: A list of two strings, where the first string is the type of edit, and the second string is the target type.
+            Valid types of edit: ["add_new","edit_existing","delete_existing","rename_existing"]
+            Valid target types: ["topic","lesson","chunk"]
+        Behavior:
+        Defines the display version of the operation options for the menu, and their corresponding machine names.
+        Uses menu_translator() to display the menu with the display options, and then does the same with the target type.
+        """
+        #Get operation type
+        print("What type of edit would you like to make?")
+        operation_menu_options = self.operation_options
+        operation_menu_display_options = self.operation_display_options
+        display_and_path_dict = dict(zip(operation_menu_display_options, operation_menu_options))
+        user_operation_edit_type_choice = menu_translator(operation_menu_display_options)
+        operation_type = display_and_path_dict.get(user_operation_edit_type_choice)
+
+        print("What type of thing would you like to edit?")
+        #Now, we get the target of their operation (Chunk, Lesson, Topic)
+        target_menu_options = self.target_options
+        target_menu_display_options = self.target_display_options
+        display_and_path_dict = dict(zip(target_menu_display_options, target_menu_options))
+        user_target_edit_type_choice = menu_translator(target_menu_display_options)
+        target_type = display_and_path_dict.get(user_target_edit_type_choice)
+        return [operation_type, target_type]
+
+    def edit_type_director(self,operation_type: str,target_type: str) -> None:
+        """
+        This function will direct the user to the correct function to perform their edit, given the type of edit and the target of their edit.
+        It is meant to be used in conjunction with ask_user_edit_type().
+        :param operation_type: The type of edit that the user wants to perform.
+        :param target_type: The type of thing that the user wants to edit.
+        :return:
+        """
+        if operation_type not in self.operation_options:
+            raise ValueError("Upstream error in edit_type_director: operation_type was not in Editor.operation_options. This should never happen. Please report this error to the developer.")
+        elif operation_type == "add_new":
+            AddNew.add_new(target_type)
+        elif operation_type == "edit_existing":
+            #TODO: Add edit_existing feature
+            pass
+        elif operation_type == "delete_existing":
+            #TODO: Add delete_existing feature
+            pass
+        elif operation_type == "rename_existing":
+            #TODO: Add rename_existing feature
+            pass
+        else:
+            print(f"This feature, {operation_type} is not yet implemented. Please report this error to the developer.")
+        return None
+    def editor(self):
+        """
+        This function will act as an orchestrator for the editor.
+        There should be very little logic in this function, instead, logic is handled in other functions.
+        It will simply manage the editor functions, serving as the gateway between the rest of the script and the editor functions.
+        :return:
+        """
+        print("Welcome to FarFetched's Editor!")
+        operation_type, target_type = self.ask_user_edit_type()
+        self.edit_type_director(operation_type,target_type)
 
 def main():
     print("Welcome to FarFetched's Lesson Manager.")
-    editor()
     while True:
-        menu("Create a new topic","new_topic","Edit topic","editor","Exit","exit")
-        if menu() == "new_topic":
+        choice = menu("Create a new topic","new_topic","Edit existing knowledge","editor","Exit","exit")
+        if choice == "new_topic":
             orchestrate_creation()
-        elif menu() == "exit":
+            continue
+        elif choice == "exit":
             break
-        elif menu() == "editor":
-            pass
+        elif choice == "editor":
+            editor_instance = Editor()
+            Editor.editor(editor_instance)
+            continue
 if __name__ == '__main__':
     main()
