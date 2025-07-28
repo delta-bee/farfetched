@@ -419,7 +419,8 @@ class AddNew:
         topic_path = Editor.fetch_user_desired_topic_path()
         if not topic_path:
             raise Exception("Error in add_lesson: topic_path was None. This should never happen. Please report this error to the developer.")
-        print(f"Topic path: {topic_path}")
+        list_of_lessons = os.listdir(topic_path)
+        print(f'List of lessons in this topic: {list_of_lessons}')
         lesson_name = input("What is the name of your new lesson?")
         target_path = os.path.join(topic_path, lesson_name)
 
@@ -453,8 +454,28 @@ class AddNew:
 
     @staticmethod
     def add_question():
-        pass
-        #TODO: Add question feature
+        """
+        Gets the chunk directory to add a question to, and then asks the user for the question, and then creates the question file.
+        :return:
+        """
+        print("Please pick a chunk to add a question to.")
+        chunk_path = Editor.fetch_user_desired_chunk_path()
+        if not chunk_path:
+            raise Exception("Error in add_question: chunk_path was None. This should never happen. Please report this error to the developer.")
+        print("What is the question?")
+        question_text = input()
+        print("What is the answer?")
+        answer_text = input()
+        question_directory = os.path.join(chunk_path, 'questions')
+        if_not_exist_create_it(question_directory)
+        if not len(os.listdir(question_directory)) == 0:
+            raise FileExistsError("Error in add_question: question directory is not empty. As of commit #34, FarFetched does not support multiple questions in a chunk.")
+
+        question_file_path = os.path.join(chunk_path,'questions','question.ffq1')
+        with open(question_file_path, 'w') as question_file:
+            question_file.write(question_text+'\n')
+            question_file.write(answer_text+'\n')
+        print("Question added.")
 
     @staticmethod
     def add_new(target_type: str):
@@ -472,8 +493,7 @@ class AddNew:
         elif target_type == "chunk":
             return AddNew.add_chunk()
         elif target_type == "question":
-            pass
-            return None
+            return AddNew.add_question()
         else:
             raise ValueError("Unknown operation type. This should never happen. Please report this error to the developer.")
 class Editor:
@@ -527,7 +547,7 @@ class Editor:
     def fetch_user_desired_topic_path() -> Optional[str]:
         """
         This function will display a menu that allows the user to select a topic.
-        It returns a string, that corresponds to the path of the topic that the user has chosen.
+        It returns a string, that corresponds to the path of the topic directory that the user has chosen.
         :return: A string that corresponds to the path of the topic that the user has chosen, or None if the user has not created any topics yet.
         Behavior:
         Calls fetch_topics() to get a dictionary of topic names and topic paths.
@@ -568,7 +588,23 @@ class Editor:
         if user_lesson_name_choice not in display_lesson_list or user_lesson_path_choice not in lesson_list.values():
             raise ValueError("Error in fetch_user_desired_lesson_path: menu_translator returned a value that was not in the lesson_list. This should never happen. Please report this error to the developer.")
         return user_lesson_path_choice
-
+    @staticmethod
+    def fetch_user_desired_chunk_path() -> Optional[str]:
+        """
+        This function will leverage the fetch_user_desired_lesson_path() function to get the path of the desired chunk directory.
+        :return:
+        """
+        lesson_path = Editor.fetch_user_desired_lesson_path()
+        #Now, we need to get the appropriate chunk directory.
+        chunk_list = get_immediate_child_directories(lesson_path)
+        chunk_display_list = [strip_path(chunk,-1) for chunk in chunk_list]
+        chunk_path_and_display_dict = dict(zip(chunk_display_list, chunk_list))
+        print(f'Please select a chunk from the following list:')
+        user_chunk_name_choice = menu_translator(chunk_display_list)
+        chunk_path = chunk_path_and_display_dict.get(user_chunk_name_choice)
+        return chunk_path
+#TODO: Make this stuff not just crash the program and actually implement non-n00b error handling
+#TODO: Present me isn't going to do it, because I have too much work to do already!
 
     def ask_user_edit_type(self) -> List[str]:
         """
